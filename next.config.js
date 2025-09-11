@@ -1,0 +1,73 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['@prisma/client', 'next-auth'],
+    turbo: {
+      loaders: {
+        '.svg': ['@svgr/webpack']
+      }
+    }
+  },
+  // Enable compression
+  compress: true,
+  // Enable image optimization
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 3600, // Cache for 1 hour
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  // Enable modern JavaScript
+  transpilePackages: [],
+  // Headers for static assets and performance
+  async headers() {
+    return [
+      {
+        source: '/favicon.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, immutable, max-age=31536000',
+          },
+        ],
+      },
+      {
+        source: '/(.*\\.(?:jpg|jpeg|png|gif|webp|avif|svg|ico))',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, immutable, max-age=31536000',
+          },
+        ],
+      },
+      {
+        source: '/(.*\\.(?:js|css))',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, immutable, max-age=31536000',
+          },
+        ],
+      },
+    ]
+  },
+  // CSS optimization
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      // CSS tree-shaking and minification
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        styles: {
+          name: 'styles',
+          test: /\.(css|scss|sass)$/,
+          chunks: 'all',
+          enforce: true,
+        },
+      }
+    }
+    return config
+  },
+}
+
+module.exports = nextConfig

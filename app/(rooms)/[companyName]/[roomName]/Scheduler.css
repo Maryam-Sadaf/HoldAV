@@ -1,0 +1,8 @@
+.scheduler-container {
+  height: auto; /* Auto height for scrollable container */
+  width: 100vw;
+  min-height: 600px; /* Reasonable minimum height */
+  max-height: 85vh; /* Maximum height to fit in viewport */
+  overflow: auto; /* Enable scrolling */
+  padding-bottom: 20px; /* Reduced padding */
+}
