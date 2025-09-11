@@ -36,8 +36,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/api/_middleware.ts",
-    "build/types/**/*.ts"
+    "app/**/*"          /* 🔥 Include all App Router files */
   ],
   "exclude": ["node_modules"]
 }

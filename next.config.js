@@ -50,6 +50,39 @@ const nextConfig = {
       'node_modules'
     ]
     
+    // Add extensions for better resolution
+    config.resolve.extensions = [
+      '.js',
+      '.jsx',
+      '.ts',
+      '.tsx',
+      '.json',
+      '.mjs',
+      '.cjs'
+    ]
+    
+    // Debug logging for Vercel
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Webpack alias config:', config.resolve.alias)
+      console.log('Webpack modules config:', config.resolve.modules)
+    }
+    
+    // Add a custom resolver plugin for better path resolution
+    const { NormalModuleReplacementPlugin } = require('webpack')
+    
+    // Add replacement plugin for @/ paths
+    config.plugins.push(
+      new NormalModuleReplacementPlugin(
+        /^@\/(.*)$/,
+        (resource) => {
+          const match = resource.request.match(/^@\/(.*)$/)
+          if (match) {
+            resource.request = path.resolve(__dirname, match[1])
+          }
+        }
+      )
+    )
+    
     if (!dev && !isServer) {
       // CSS tree-shaking and minification
       config.optimization.splitChunks.cacheGroups = {
