@@ -9,6 +9,28 @@ const nextConfig = {
       }
     }
   },
+  // Add webpack configuration for path resolution
+  webpack: (config, { dev, isServer }) => {
+    // Add alias resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname),
+    }
+    
+    if (!dev && !isServer) {
+      // CSS tree-shaking and minification
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        styles: {
+          name: 'styles',
+          test: /\.(css|scss|sass)$/,
+          chunks: 'all',
+          enforce: true,
+        },
+      }
+    }
+    return config
+  },
   // Enable compression
   compress: true,
   // Enable image optimization
@@ -51,22 +73,6 @@ const nextConfig = {
         ],
       },
     ]
-  },
-  // CSS optimization
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      // CSS tree-shaking and minification
-      config.optimization.splitChunks.cacheGroups = {
-        ...config.optimization.splitChunks.cacheGroups,
-        styles: {
-          name: 'styles',
-          test: /\.(css|scss|sass)$/,
-          chunks: 'all',
-          enforce: true,
-        },
-      }
-    }
-    return config
   },
 }
 
