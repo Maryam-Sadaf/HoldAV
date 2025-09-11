@@ -6,12 +6,12 @@ import { toast } from "react-hot-toast";
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { logo } from "@/assets";
+import { logo } from "../../../assets";
 import { FaGoogle } from "react-icons/fa";
 import { signIn, useSession } from "next-auth/react";
 import axios from "axios";
-import Input from "@/components/Inputs/Input";
-import Button from "@/components/Button";
+import Input from "../../../components/Inputs/Input";
+import Button from "../../../components/Button";
 
 const SignupForm = () => {
   const [isLoading, setIsLoading] = useState(false);
