@@ -13,6 +13,16 @@ const nextConfig = {
   webpack: (config, { dev, isServer }) => {
     // Add alias resolution with more explicit paths
     const path = require('path')
+    
+    // Ensure the resolve object exists
+    if (!config.resolve) {
+      config.resolve = {}
+    }
+    if (!config.resolve.alias) {
+      config.resolve.alias = {}
+    }
+    
+    // Add explicit aliases
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
@@ -22,6 +32,12 @@ const nextConfig = {
       '@/utils': path.resolve(__dirname, 'utils'),
       '@/types': path.resolve(__dirname, 'types'),
     }
+    
+    // Also add to resolve.modules for additional resolution
+    if (!config.resolve.modules) {
+      config.resolve.modules = []
+    }
+    config.resolve.modules.push(path.resolve(__dirname))
     
     if (!dev && !isServer) {
       // CSS tree-shaking and minification
