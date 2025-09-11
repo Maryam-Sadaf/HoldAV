@@ -12,6 +12,8 @@ import { signIn } from "next-auth/react";
 import Input from "../../../components/Inputs/Input";
 import Button from "../../../components/Button";
 
+// Force refresh for Vercel deployment
+
 const Authentification = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");

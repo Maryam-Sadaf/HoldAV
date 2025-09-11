@@ -19,6 +19,9 @@ const nextConfig = {
       '@': path.resolve(__dirname),
     }
     
+    // Force refresh for Vercel deployment
+    console.log('Webpack config loaded for Vercel deployment')
+    
     if (!dev && !isServer) {
       // CSS tree-shaking and minification
       config.optimization.splitChunks.cacheGroups = {

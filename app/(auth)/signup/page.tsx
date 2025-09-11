@@ -13,6 +13,8 @@ import axios from "axios";
 import Input from "../../../components/Inputs/Input";
 import Button from "../../../components/Button";
 
+// Force refresh for Vercel deployment
+
 const SignupForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
