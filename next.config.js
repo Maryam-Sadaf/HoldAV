@@ -11,10 +11,16 @@ const nextConfig = {
   },
   // Add webpack configuration for path resolution
   webpack: (config, { dev, isServer }) => {
-    // Add alias resolution
+    // Add alias resolution with more explicit paths
+    const path = require('path')
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname),
+      '@': path.resolve(__dirname),
+      '@/assets': path.resolve(__dirname, 'assets'),
+      '@/components': path.resolve(__dirname, 'components'),
+      '@/lib': path.resolve(__dirname, 'lib'),
+      '@/utils': path.resolve(__dirname, 'utils'),
+      '@/types': path.resolve(__dirname, 'types'),
     }
     
     if (!dev && !isServer) {
