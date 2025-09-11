@@ -83,6 +83,24 @@ const nextConfig = {
       )
     )
     
+    // Add additional resolver for @/ paths
+    config.resolve.plugins = config.resolve.plugins || []
+    config.resolve.plugins.push({
+      apply: (resolver) => {
+        resolver.hooks.resolve.tapAsync('CustomResolver', (request, resolveContext, callback) => {
+          if (request.request && request.request.startsWith('@/')) {
+            const newRequest = {
+              ...request,
+              request: path.resolve(__dirname, request.request.substring(2))
+            }
+            resolver.doResolve(resolver.hooks.resolve, newRequest, null, resolveContext, callback)
+          } else {
+            callback()
+          }
+        })
+      }
+    })
+    
     if (!dev && !isServer) {
       // CSS tree-shaking and minification
       config.optimization.splitChunks.cacheGroups = {
