@@ -11,7 +11,6 @@ const nextConfig = {
   },
   // Add webpack configuration for path resolution
   webpack: (config, { dev, isServer }) => {
-    // Add alias resolution with more explicit paths
     const path = require('path')
     
     // Ensure the resolve object exists
@@ -22,7 +21,7 @@ const nextConfig = {
       config.resolve.alias = {}
     }
     
-    // Add explicit aliases
+    // Add comprehensive aliases for Vercel compatibility
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
@@ -31,13 +30,25 @@ const nextConfig = {
       '@/lib': path.resolve(__dirname, 'lib'),
       '@/utils': path.resolve(__dirname, 'utils'),
       '@/types': path.resolve(__dirname, 'types'),
+      '@/constants': path.resolve(__dirname, 'constants'),
+      '@/contexts': path.resolve(__dirname, 'contexts'),
+      '@/providers': path.resolve(__dirname, 'providers'),
     }
     
-    // Also add to resolve.modules for additional resolution
-    if (!config.resolve.modules) {
-      config.resolve.modules = []
+    // Add fallback for Node.js modules (important for Vercel)
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
     }
-    config.resolve.modules.push(path.resolve(__dirname))
+    
+    // Ensure proper module resolution
+    config.resolve.modules = [
+      path.resolve(__dirname, 'node_modules'),
+      path.resolve(__dirname),
+      'node_modules'
+    ]
     
     if (!dev && !isServer) {
       // CSS tree-shaking and minification

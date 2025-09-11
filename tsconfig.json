@@ -25,7 +25,10 @@
       "@/assets/*": ["./assets/*"],
       "@/lib/*": ["./lib/*"],
       "@/utils/*": ["./utils/*"],
-      "@/types/*": ["./types/*"]
+      "@/types/*": ["./types/*"],
+      "@/constants/*": ["./constants/*"],
+      "@/contexts/*": ["./contexts/*"],
+      "@/providers/*": ["./providers/*"]
     }
   },
   "include": [
