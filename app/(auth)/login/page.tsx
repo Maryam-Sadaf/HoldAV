@@ -9,9 +9,8 @@ import Image from "next/image";
 import { logo } from "../../../assets";
 import { FaGoogle } from "react-icons/fa";
 import { signIn } from "next-auth/react";
-import Input from "../../../components/Inputs/Input";
-import Button from "../../../components/Button";
-
+import Input from "@/components/Inputs/Input";
+import Button from "@/components/Button";
 // Force refresh for Vercel deployment
 
 const Authentification = () => {

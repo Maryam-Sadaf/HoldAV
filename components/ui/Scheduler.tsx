@@ -183,31 +183,6 @@ const Scheduler = ({
 
   // Effect to handle loading state on buttons - optimized for responsiveness
   useEffect(() => {
-    // Add CSS animation and button states if not already added
-    if (!document.getElementById('scheduler-button-styles')) {
-      const style = document.createElement('style');
-      style.id = 'scheduler-button-styles';
-      style.textContent = `
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .loading {
-          opacity: 0.8;
-          cursor: not-allowed !important;
-        }
-        .success {
-          background-color: #10b981 !important;
-          color: white !important;
-        }
-        .error {
-          background-color: #ef4444 !important;
-          color: white !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
     // Update button states based on current state
     if (buttonStates.save !== 'idle') {
       updateButtonUI('save', buttonStates.save);
@@ -215,33 +190,6 @@ const Scheduler = ({
     if (buttonStates.cancel !== 'idle') {
       updateButtonUI('cancel', buttonStates.cancel);
     }
-    
-    // Use MutationObserver for better performance and responsiveness
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList' || mutation.type === 'attributes') {
-          // Update buttons when DOM changes
-          if (buttonStates.save !== 'idle') {
-            updateButtonUI('save', buttonStates.save);
-          }
-          if (buttonStates.cancel !== 'idle') {
-            updateButtonUI('cancel', buttonStates.cancel);
-          }
-        }
-      });
-    });
-
-    // Observe the document body for changes
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'disabled']
-    });
-
-    return () => {
-      observer.disconnect();
-    };
   }, [isLoading, buttonStates, updateButtonUI]);
 
   useEffect(() => {

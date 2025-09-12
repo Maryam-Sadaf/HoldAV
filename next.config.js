@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['@prisma/client', 'next-auth'],
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma', 'bcrypt'],
     turbo: {
       loaders: {
         '.svg': ['@svgr/webpack']
@@ -47,6 +47,11 @@ const nextConfig = {
   },
   // Enable modern JavaScript
   transpilePackages: [],
+  // Ensure Prisma engines are included in serverless functions
+  outputFileTracingIncludes: {
+    'pages/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*'],
+    'app/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*']
+  },
   // Headers for static assets and performance
   async headers() {
     return [

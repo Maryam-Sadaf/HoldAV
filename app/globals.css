@@ -332,10 +332,10 @@ code {
 }
 
 .primary {
-  background-color: theme("colors.primary");
+  background-color: theme("colors.primary.DEFAULT");
 }
 .secondary {
-  background-color: theme("colors.secondary");
+  background-color: theme("colors.secondary.DEFAULT");
 }
 
 .light {

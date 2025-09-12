@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Scheduler from "../../../../components/ui/Scheduler";
-import Toolbar from "../../../../components/ui/Toolbar";
+import Scheduler from "@/components/ui/Scheduler";
+import Toolbar from "@/components/ui/Toolbar";
 import { toast } from "react-hot-toast";
 import { SafeRoom, safeUser } from "@/types";
 import { useParams, useRouter } from "next/navigation";
@@ -53,7 +53,7 @@ const Reservation = ({
   const [currentTimeFormatState, setCurrentTimeFormatState] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const DynamicScheduler = dynamic(
-    () => import("../../../../components/ui/Scheduler"),
+    () => import("@/components/ui/Scheduler"),
     {
       ssr: false,
     }
