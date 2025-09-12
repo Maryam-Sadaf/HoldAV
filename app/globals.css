@@ -261,14 +261,6 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
-.scheduler_container {
-  height: auto; /* Auto height for scrollable container */
-  min-height: 600px; /* Reasonable minimum height */
-  max-height: 85vh; /* Maximum height to fit in viewport */
-  overflow: auto; /* Enable scrolling */
-  padding: 20px; /* Add padding around scheduler */
-}
-
 .message-area {
   background: #ebebeb;
   height: 200px;
