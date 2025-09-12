@@ -22,6 +22,11 @@ const nextConfig = {
     // Force refresh for Vercel deployment
     console.log('Webpack config loaded for Vercel deployment')
     
+    if (isServer) {
+      // Ensure prisma is treated as external on server so engines resolve from node_modules
+      config.externals = [...(config.externals || []), '@prisma/client', 'prisma']
+    }
+
     if (!dev && !isServer) {
       // CSS tree-shaking and minification
       config.optimization.splitChunks.cacheGroups = {
@@ -49,8 +54,8 @@ const nextConfig = {
   transpilePackages: [],
   // Ensure Prisma engines are included in serverless functions
   outputFileTracingIncludes: {
-    'pages/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*'],
-    'app/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*']
+    'pages/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*', './node_modules/.prisma/client/**/*'],
+    'app/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*', './node_modules/.prisma/client/**/*']
   },
   // Headers for static assets and performance
   async headers() {

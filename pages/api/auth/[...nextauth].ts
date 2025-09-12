@@ -7,6 +7,10 @@ import GoogleProvider from "next-auth/providers/google";
 import NextAuth from "next-auth/next";
 import { getSession, signOut } from "next-auth/react";
 
+export const config = {
+  runtime: 'nodejs'
+};
+
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   ...( { trustHost: true } as any ),
