@@ -36,7 +36,7 @@ const useRoutes = (currentUser: any) => {
           {
             label: "Hjem",
             icon: MdHome,
-            href: "/home",
+            href: "/",
             color: "text-light",
           },
         ]

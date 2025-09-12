@@ -785,9 +785,9 @@ const Scheduler = ({
         id="scheduler_here"
         style={{ 
           width: "100%", 
-          height: "80vh", // Use viewport height for scrollable container
-          minHeight: "600px",
-          maxHeight: "calc(100vh - 150px)", // Prevent taking full screen
+          height: "100vh", // Use viewport height for scrollable container
+          // minHeight: "600px",
+          // maxHeight: "calc(100vh - 150px)", // Prevent taking full screen
           overflow: "auto", // Enable scrolling
           border: "1px solid #e5e7eb", // Add subtle border
           borderRadius: "8px" // Rounded corners
