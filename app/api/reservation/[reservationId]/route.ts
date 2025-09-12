@@ -3,6 +3,7 @@ import getCurrentUser from "@/app/server/actions/getCurrentUser";
 import prisma from "@/lib/prismaDB";
 import { sendUpdateMail } from "@/lib/sendMail";
 import { NextResponse } from "next/server";
+import { cache, generateCacheKey, CACHE_KEYS } from "@/lib/cache";
 
 interface IParams {
   reservationId?: string;
@@ -22,6 +23,12 @@ export async function DELETE(
     throw new Error("Ugyldig ID");
   }
 
+  // Fetch reservation owner and company before deleting (needed to invalidate caches)
+  const existing = await prisma.reservation.findFirst({
+    where: { id: reservationId },
+    select: { id: true, userId: true, companyName: true, roomId: true }
+  });
+
   const reservation = await prisma.reservation.deleteMany({
     where: {
       id: reservationId,
@@ -35,6 +42,21 @@ export async function DELETE(
       ],
     },
   });
+
+  // Invalidate API caches so subsequent GETs return fresh data immediately
+  try {
+    if (existing?.userId) {
+      const userKey = generateCacheKey(CACHE_KEYS.USER_RESERVATIONS, existing.userId);
+      cache.delete(userKey);
+    }
+    if (existing?.companyName) {
+      const companyKey = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, existing.companyName);
+      cache.delete(companyKey);
+    }
+  } catch (e) {
+    // Avoid throwing on cache issues
+    console.error('Cache invalidation error (reservation delete):', e);
+  }
   return NextResponse.json(reservation);
 }
 

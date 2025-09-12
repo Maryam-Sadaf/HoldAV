@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import Container from "@/components/Container";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import ReservationCard from "./ReservationCard";
 import axios from "axios";
 import Heading from "@/components/Heading";
@@ -29,19 +30,27 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
     queryKey: ["reservationsForUserOrCompany", currentUser?.role, companyName, currentUser?.id],
     queryFn: async () => {
       if (currentUser?.role === 'admin') {
-        const res = await axios.get(`/api/reservation/company/${companyName}`);
+        const res = await axios.get(`/api/reservation/company/${companyName}?_t=${Date.now()}`);
         return res.data;
       }
-      const res = await axios.get(`/api/reservation/user/${currentUser.id}`);
+      const res = await axios.get(`/api/reservation/user/${currentUser.id}?_t=${Date.now()}`);
       return res.data;
     },
-    // Avoid showing stale initial data to prevent flashing deleted items
-    // initialData removed; rely on loader while fetching fresh data
-    refetchOnMount: !disableRefetch,
-    refetchOnWindowFocus: false,
+    // Always refresh when mounting and after deletes to avoid stale cache
+    initialData: reservationsInit,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     staleTime: 0,
-    enabled: !disableRefetch,
+    enabled: true,
   });
+
+  // Local list to ensure immediate UI updates even if network/browser caches
+  const [list, setList] = useState<any[]>(Array.isArray(reservationsInit) ? reservationsInit : []);
+  useEffect(() => {
+    if (Array.isArray(reservations)) {
+      setList(reservations);
+    }
+  }, [reservations]);
 
   // Kiosk-style Info Screen Layout for today's reservations
   if (isInfoScreen) {
@@ -236,7 +245,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
     );
   }
 
-  if (reservations?.length === 0) {
+  if (list?.length === 0) {
     return (
       <EmptyState
         title="Ingen reservasjoner funnet"
@@ -253,7 +262,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
         subTitle={currentUser?.role === 'admin' ? 'Her kan du se alle reservasjoner' : 'Her kan du se dine reservasjoner'}
       />
       <div className="grid grid-cols-1 gap-8 py-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {reservations.map((reservation: any) => (
+        {list.map((reservation: any) => (
           <ReservationCard
             key={reservation.id}
             reservation={reservation}

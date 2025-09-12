@@ -9,6 +9,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
 import AddToGoogleCalendarButton from "@/components/Inputs/Calender";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ReservationCardProps {
   reservation?: any;
@@ -20,19 +21,64 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
   currentUser,
 }) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [hasToasted, setHasToasted] = useState(false);
+
+  const deleteReservation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await axios.delete(`/api/reservation/${id}`);
+      return res.data;
+    },
+    onMutate: async (id: string) => {
+      setIsLoading(true);
+      await queryClient.cancelQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
+      const previous = queryClient.getQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false });
+      queryClient.setQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((r: any) => r?.id !== id);
+      });
+      // Also update the local list maintained by ReservationsClient
+      queryClient.setQueriesData({ queryKey: ["reservationsForUserOrCompany", undefined], exact: false }, (old: any) => old);
+      return { previous } as any;
+    },
+    onSuccess: (data: any, id: string, context: any) => {
+      const count = typeof data?.count === 'number' ? data.count : (typeof data?.deletedCount === 'number' ? data.deletedCount : 0);
+      if (count > 0) {
+        if (!hasToasted) {
+          toast.success("Reservasjon kansellert");
+          setHasToasted(true);
+        }
+        setIsDeleted(true);
+        queryClient.invalidateQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
+      } else {
+        // rollback optimistic removal if server did not delete
+        if (context?.previous) {
+          for (const [queryKey, data] of context.previous) {
+            queryClient.setQueryData(queryKey, data);
+          }
+        }
+        toast.error("Reservasjon finnes ikke eller er allerede kansellert");
+      }
+    },
+    onError: (_err, _id, context: any) => {
+      if (context?.previous) {
+        for (const [queryKey, data] of context.previous) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      toast.error("Noe gikk galt..");
+    },
+    onSettled: () => {
+      setIsLoading(false);
+    },
+  });
 
   const onCancelReservation = async (id: any) => {
+    if (isDeleted || isLoading || deleteReservation.isPending) return;
     setIsLoading(true);
-
-    try {
-      await axios.delete(`/api/reservation/${id}`);
-      toast.success("Reservasjon kansellert");
-      router.refresh();
-    } catch (error: any) {
-      toast.error("Noe gikk galt..");
-    } finally {
-      setIsLoading(false);
-    }
+    deleteReservation.mutate(id);
   };
   const formatDate = (inputDate: any) => {
     const formattedDate = new Date(inputDate).toLocaleString("no-NO", {
@@ -47,7 +93,10 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
     return formattedDate;
   };
 
-  const [isLoading, setIsLoading] = useState(false);
+  if (isDeleted) {
+    return null;
+  }
+
   return (
     <div className="w-full col-span-1 py-3 group">
       <div className="flex flex-col w-full gap-2 p-6 border rounded-md bg-light/10 border-primary">
@@ -97,8 +146,10 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
 
         <Button
           small
-          label="Kanseller Reservasjon"
+          label={isDeleted ? "Kansellert" : "Kanseller Reservasjon"}
           onClick={() => onCancelReservation(reservation?.id)}
+          // Disabled state to avoid double clicks while deleting
+          disabled={isDeleted || isLoading || deleteReservation.isPending}
         />
       </div>
     </div>

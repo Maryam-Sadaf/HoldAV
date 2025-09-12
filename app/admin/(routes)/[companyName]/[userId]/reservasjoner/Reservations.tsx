@@ -30,7 +30,7 @@ const Reservations = async ({ params }: { params: Promise<IParams> }) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/reservation/user/${currentUser.id}`,
-        { next: { revalidate: 60 } }
+        { cache: 'no-store' }
       );
       if (!res.ok) {
         console.error('Failed to fetch reservations:', res.status, res.statusText);
@@ -47,7 +47,7 @@ const Reservations = async ({ params }: { params: Promise<IParams> }) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/reservation/company/${companyName}`,
-        { next: { revalidate: 60 } }
+        { cache: 'no-store' }
       );
       if (!res.ok) {
         console.error('Failed to fetch reservations for company:', res.status, res.statusText);
