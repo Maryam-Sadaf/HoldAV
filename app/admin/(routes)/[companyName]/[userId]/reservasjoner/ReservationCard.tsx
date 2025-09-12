@@ -35,10 +35,28 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
       setIsLoading(true);
       await queryClient.cancelQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
       const previous = queryClient.getQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false });
-      queryClient.setQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false }, (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.filter((r: any) => r?.id !== id);
-      });
+
+      const removeFromData = (old: any) => {
+        if (!old) return old;
+        if (Array.isArray(old)) return old.filter((r: any) => r?.id !== id);
+        if (Array.isArray(old?.pages)) {
+          return {
+            ...old,
+            pages: old.pages.map((p: any) => Array.isArray(p)
+              ? p.filter((r: any) => r?.id !== id)
+              : Array.isArray(p?.items)
+                ? { ...p, items: p.items.filter((r: any) => r?.id !== id) }
+                : p
+            )
+          };
+        }
+        if (Array.isArray(old?.items)) {
+          return { ...old, items: old.items.filter((r: any) => r?.id !== id) };
+        }
+        return old;
+      };
+
+      queryClient.setQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false }, removeFromData);
       // Also update the local list maintained by ReservationsClient
       queryClient.setQueriesData({ queryKey: ["reservationsForUserOrCompany", undefined], exact: false }, (old: any) => old);
       return { previous } as any;

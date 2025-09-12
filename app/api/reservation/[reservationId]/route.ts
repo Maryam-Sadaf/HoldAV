@@ -4,6 +4,7 @@ import prisma from "@/lib/prismaDB";
 import { sendUpdateMail } from "@/lib/sendMail";
 import { NextResponse } from "next/server";
 import { cache, generateCacheKey, CACHE_KEYS } from "@/lib/cache";
+import { companyNameToSlug } from "@/utils/slugUtils";
 
 interface IParams {
   reservationId?: string;
@@ -50,8 +51,15 @@ export async function DELETE(
       cache.delete(userKey);
     }
     if (existing?.companyName) {
-      const companyKey = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, existing.companyName);
-      cache.delete(companyKey);
+      // Invalidate by both DB format and slug format (GET uses slug param)
+      const companyKeyDb = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, existing.companyName);
+      const companyKeySlug = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, companyNameToSlug(existing.companyName));
+      cache.delete(companyKeyDb);
+      cache.delete(companyKeySlug);
+    }
+    if (existing?.roomId) {
+      const roomKey = generateCacheKey(CACHE_KEYS.ROOM_RESERVATIONS, String(existing.roomId));
+      cache.delete(roomKey);
     }
   } catch (e) {
     // Avoid throwing on cache issues

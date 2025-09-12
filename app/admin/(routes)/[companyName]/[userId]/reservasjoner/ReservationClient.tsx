@@ -26,7 +26,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
   disableRefetch = false,
   isInfoScreen = false,
 }) => {
-  const { data: reservations, isLoading, isFetching } = useQuery({
+  const { data: reservations, isLoading, isFetching, isRefetching } = useQuery({
     queryKey: ["reservationsForUserOrCompany", currentUser?.role, companyName, currentUser?.id],
     queryFn: async () => {
       if (currentUser?.role === 'admin') {
@@ -234,7 +234,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
 
   // Original layout for regular reservations page
   // While fetching, show the project's existing loader instead of stale data
-  if (!isInfoScreen && (isLoading || isFetching)) {
+  if (!isInfoScreen && (isLoading || isFetching || isRefetching)) {
     return (
       <div>
         <Heading title="Reservasjoner" subTitle={currentUser?.role === 'admin' ? 'Her kan du se alle reservasjoner' : 'Her kan du se dine reservasjoner'} />
