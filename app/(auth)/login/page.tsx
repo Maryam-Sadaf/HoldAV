@@ -3,7 +3,7 @@ import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { logo } from "../../../assets";
@@ -15,6 +15,8 @@ import Button from "@/components/Button";
 
 const Authentification = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const hasSubmittedRef = useRef(false);
+  const hasToastedRef = useRef(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
   const schema = z.object({
@@ -59,7 +61,8 @@ const Authentification = () => {
 
   const onSubmit: SubmitHandler<FieldValues> = (data, e) => {
     e?.preventDefault();
-
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     setIsLoading(true);
 
     signIn("credentials", {
@@ -69,7 +72,10 @@ const Authentification = () => {
     })
       .then((callback) => {
         if (callback?.ok) {
-          toast.success("Logget inn");
+          if (!hasToastedRef.current) {
+            toast.success("Logget inn");
+            hasToastedRef.current = true;
+          }
           router.push("/");
         }
 
@@ -79,6 +85,7 @@ const Authentification = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        hasSubmittedRef.current = false;
       });
   };
 
@@ -138,7 +145,7 @@ const Authentification = () => {
                 {message && <span className="text-rose-700">{message}</span>}
               </div>
               <div className="mb-3">
-                <Button label="Logg inn" type />
+                <Button label={isLoading ? "Logger inn..." : "Logg inn"} type disabled={isLoading} />
               </div>
             </form>
 

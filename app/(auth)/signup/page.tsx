@@ -3,7 +3,7 @@ import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { logo } from "../../../assets";
@@ -17,6 +17,8 @@ import Button from "@/components/Button";
 
 const SignupForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const hasSubmittedRef = useRef(false);
+  const hasToastedRef = useRef(false);
   const [message, setMessage] = useState("");
   const [isValidatingInvite, setIsValidatingInvite] = useState(false);
   const [inviteData, setInviteData] = useState<{
@@ -150,6 +152,8 @@ const SignupForm = () => {
 
   const onSubmit: SubmitHandler<FieldValues> = async (data, e) => {
     e?.preventDefault();
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
     setIsLoading(true);
 
     try {
@@ -173,19 +177,26 @@ const SignupForm = () => {
         
         await axios.post("/api/register", signupData);
         await signIn("credentials", { ...data, redirect: false });
-        toast.success("Registrert og koblet til selskapet!");
+        if (!hasToastedRef.current) {
+          toast.success("Registrert og koblet til selskapet!");
+          hasToastedRef.current = true;
+        }
         router.push("/");
       } else {
         // Regular signup (existing logic)
         await axios.post("/api/register", data);
         await signIn("credentials", { ...data, redirect: false });
-        toast.success("Registrert!");
+        if (!hasToastedRef.current) {
+          toast.success("Registrert!");
+          hasToastedRef.current = true;
+        }
         router.push("/");
       }
     } catch (error: any) {
       toast.error("Noe gikk galt");
     } finally {
       setIsLoading(false);
+      hasSubmittedRef.current = false;
     }
   };
 
