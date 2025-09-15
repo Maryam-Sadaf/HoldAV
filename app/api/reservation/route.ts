@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     if (conflictingReservation) {
       return NextResponse.json(
-        { error: "This reservation is already booked for the selected time slot." },
+        { error: "Dette tidsrommet er allerede reservert." },
         { status: 409 }
       );
     }

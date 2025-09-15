@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useRef, useState } from "react";
 import Button from "@/components/Button";
 import Input from "@/components/Inputs/Input";
 
@@ -64,8 +64,11 @@ const InvitePageClient = ({
       }
     },
   });
+  const submittingRef = useRef(false);
   const onSubmit: SubmitHandler<FieldValues> = async (data: any) => {
-    setIsLoading(true);
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    if (!isLoading) setIsLoading(true);
     const company = companyName?.replace(/\s+/g, "-");
     try {
       await axios.post(`/api/invite`, {
@@ -75,7 +78,7 @@ const InvitePageClient = ({
         adminName: currentUser?.firstname,
       });
 
-      toast.success("Invitasjon sendt!");
+      toast.success("Invitasjon sendt!", { id: "invite-success" });
 
       router.push(`/admin/${companyName}/${currentUser?.id}`);
       router.refresh();
@@ -83,22 +86,41 @@ const InvitePageClient = ({
       if (error.response.status === 400) {
         // Check if it's the "user already exists" error
         if (error.response.data === "User already exists, no need to invite.") {
-          toast.error("Bruker eksisterer allerede, ingen invitasjon nødvendig");
+          toast.error("Bruker eksisterer allerede, ingen invitasjon nødvendig", { id: "invite-error" });
         } else {
-          toast.error("Ugyldig data motatt");
+          toast.error("Ugyldig data motatt", { id: "invite-error" });
         }
       } else if (error.response.status === 409) {
-        toast.error("Bruker er allerede invitert");
+        toast.error("Bruker er allerede invitert", { id: "invite-error" });
       } else {
-        toast.error("Det har oppstått en feil");
+        toast.error("Det har oppstått en feil", { id: "invite-error" });
       }
     } finally {
       setIsLoading(false);
+      submittingRef.current = false;
     }
   };
 
+  const handleInviteClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (submittingRef.current || isLoading) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    submittingRef.current = true;
+    setIsLoading(true);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form
+      onSubmitCapture={(e) => {
+        if (submittingRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      onSubmit={handleSubmit(onSubmit)}
+    >
       <Width>
         <div className="mb-3">
           <Input
@@ -118,7 +140,13 @@ const InvitePageClient = ({
           Kun nye brukere (som ikke eksisterer i systemet) kan inviteres.
         </p>
         <Width medium>
-          <Button label="Inviter" type />
+          <Button
+            label="Inviter"
+            type
+            loading={isLoading}
+            disabled={isLoading}
+            onClick={handleInviteClick}
+          />
         </Width>
       </Width>
     </form>

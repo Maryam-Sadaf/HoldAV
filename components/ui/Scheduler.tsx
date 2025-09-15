@@ -550,7 +550,7 @@ const Scheduler = ({
             if (conflict) {
               scheduler.deleteEvent(id);
               setButtonStates(prev => ({ ...prev, save: 'error' }));
-              toast.error('This reservation is already booked for the selected time slot.');
+              toast.error('Dette tidsrommet er allerede reservert.');
               // Do not call onSubmit, just stop here
               return;
             }
@@ -580,7 +580,7 @@ const Scheduler = ({
               const isConflict = (error as any)?.response?.status === 409;
               setButtonStates(prev => ({ ...prev, save: 'error' }));
               if (isConflict) {
-                toast.error('This reservation is already booked for the selected time slot.');
+                toast.error('Dette tidsrommet er allerede reservert.');
               } else {
                 const msg = (error as any)?.message;
                 if (msg) {
