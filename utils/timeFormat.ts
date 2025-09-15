@@ -1,6 +1,6 @@
 /**
  * Formats a time duration from start and end dates into a human-readable string
- * Example: 06:00 - 07:30 → "1 hour 30 minutes"
+ * Example: 06:00 - 07:30 → "1 time 30 minutter"
  */
 export const formatDuration = (startDate: Date | string, endDate: Date | string): string => {
   const start = new Date(startDate);
@@ -12,12 +12,15 @@ export const formatDuration = (startDate: Date | string, endDate: Date | string)
   const hours = Math.floor(durationMinutes / 60);
   const minutes = durationMinutes % 60;
   
+  const hourLabel = hours === 1 ? 'time' : 'timer';
+  const minuteLabel = minutes === 1 ? 'minutt' : 'minutter';
+  
   if (hours === 0) {
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    return `${minutes} ${minuteLabel}`;
   } else if (minutes === 0) {
-    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    return `${hours} ${hourLabel}`;
   } else {
-    return `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    return `${hours} ${hourLabel} ${minutes} ${minuteLabel}`;
   }
 };
 

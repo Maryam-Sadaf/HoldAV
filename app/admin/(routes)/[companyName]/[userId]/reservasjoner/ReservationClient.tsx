@@ -121,7 +121,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-indigo-200 text-xs font-medium mb-2 uppercase tracking-wide">
-                    {currentMeeting ? 'Current Meeting' : 'Upcoming Meeting'}
+                    {currentMeeting ? 'Pågående møte' : 'Kommende møte'}
                   </div>
                   <div className="text-2xl font-semibold mb-2 text-white">{nextMeeting.text}</div>
                   <div className="text-indigo-100 text-sm mb-2">{nextMeeting.roomName}</div>
@@ -129,7 +129,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
                     {formatTimeRange(nextMeeting.start_date, nextMeeting.end_date)}
                   </div>
                   <div className="text-indigo-100 text-sm">
-                    Duration: {formatDuration(nextMeeting.start_date, nextMeeting.end_date)}
+                    Varighet: {formatDuration(nextMeeting.start_date, nextMeeting.end_date)}
                   </div>
                   <div className="text-indigo-100 mt-1 text-sm">
                     {(() => {
@@ -138,10 +138,10 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
                       
                       if (currentMeeting) {
                         const minutesLeft = Math.round((meetingEnd.getTime() - now.getTime()) / (1000 * 60));
-                        return `Ends in ${minutesLeft} minutes`;
+                        return `Slutter om ${minutesLeft} min`;
                       } else {
                         const minutesUntil = Math.round((meetingStart.getTime() - now.getTime()) / (1000 * 60));
-                        return `Starts in ${minutesUntil} minutes`;
+                        return `Starter om ${minutesUntil} min`;
                       }
                     })()}
                   </div>
@@ -163,7 +163,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
           {/* Remaining Upcoming Reservations - Timeline Format */}
           {remainingUpcomingReservations.length > 0 && (
             <div className="rounded-2xl p-6 border border-indigo-700/50 bg-[#4F518C]">
-              <div className="text-white text-xs font-medium mb-4 uppercase tracking-wide">Upcoming Reservations</div>
+              <div className="text-white text-xs font-medium mb-4 uppercase tracking-wide">Kommende reservasjoner</div>
               <div className="space-y-3">
                 {remainingUpcomingReservations.map((reservation: any) => {
                   const startTime = new Date(reservation.start_date);
@@ -196,7 +196,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
                         {isCurrentMeeting && (
                           <div className="flex items-center space-x-1">
                             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                            <span className="text-red-400 font-medium text-xs">LIVE</span>
+                            <span className="text-red-400 font-medium text-xs">PÅGÅENDE</span>
                           </div>
                         )}
                       </div>
@@ -215,8 +215,8 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div className="text-2xl font-light text-gray-800 mb-1">No upcoming meetings</div>
-              <div className="text-gray-500 text-sm">All meetings for today have been completed</div>
+              <div className="text-2xl font-light text-gray-800 mb-1">Ingen kommende møter</div>
+              <div className="text-gray-500 text-sm">Alle dagens møter er fullført</div>
             </div>
           )}
         </div>
@@ -224,7 +224,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
         {/* Footer - Clean Theme */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <div className="flex items-center justify-between text-gray-500 text-xs">
-            <div>Room Management System</div>
+            <div>Romstyringssystem</div>
             
           </div>
         </div>

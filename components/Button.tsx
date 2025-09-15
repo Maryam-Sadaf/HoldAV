@@ -10,6 +10,7 @@ interface ButtonProps {
   small?: boolean;
   type?: boolean;
   icon?: IconType;
+  loading?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -19,11 +20,12 @@ const Button: React.FC<ButtonProps> = ({
   outline,
   small,
   icon: Icon,
+  loading,
 }) => {
   return (
     <button
       type="submit"
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={onClick}
       className={`
         relative
@@ -43,7 +45,15 @@ const Button: React.FC<ButtonProps> = ({
       `}
     >
       {Icon && <Icon size={24} className="absolute left-4 top-3" />}
-      {label}
+      <span className="flex items-center justify-center gap-2">
+        {loading && (
+          <span
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white"
+            aria-hidden="true"
+          />
+        )}
+        <span>{loading ? "Laster..." : label}</span>
+      </span>
     </button>
   );
 };

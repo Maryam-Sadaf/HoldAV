@@ -3,7 +3,7 @@ import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { ReactNode, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 import axios from "axios";
 import Input from "@/components/Inputs/Input";
 import Button from "@/components/Button";
@@ -67,8 +67,11 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
     },
   });
 
+  const submittingRef = useRef(false);
   const onSubmit: SubmitHandler<FieldValues> = async (data, e) => {
     e?.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsLoading(true);
 
     try {
@@ -83,7 +86,7 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
       });
       console.log(response.data);
 
-      toast.success("Bruker opprettet!");
+      toast.success("Bruker opprettet!", { id: "create-user-success" });
       router.push(`/admin/${companyName?.replace(/\s+/g, "-")}/${adminId}`);
     } catch (error: any) {
       const status = error?.response?.status;
@@ -98,6 +101,7 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
       }
     } finally {
       setIsLoading(false);
+      submittingRef.current = false;
       //const subject = `En bruker har blitt opprettet for deg av firmaet: ${companyName}`;
       //const htmlContent = `
       //<p>Hei ${data?.firstname} ${data?.lastname}</p>
@@ -175,7 +179,7 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
           </div>
 
           <div className="mb-3">
-            <Button label="Opprett" type />
+            <Button label="Opprett" type loading={isLoading} disabled={isLoading} />
           </div>
         </form>
       </div>
