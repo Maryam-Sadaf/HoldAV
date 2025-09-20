@@ -1,6 +1,6 @@
 // pages/api/rooms/[roomId]/reservations.ts
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { sendUpdateMail } from "@/lib/sendMail";
 import { NextResponse } from "next/server";
 import { cache, generateCacheKey, CACHE_KEYS } from "@/lib/cache";
@@ -25,24 +25,24 @@ export async function DELETE(
   }
 
   // Fetch reservation owner and company before deleting (needed to invalidate caches)
-  const existing = await prisma.reservation.findFirst({
-    where: { id: reservationId },
-    select: { id: true, userId: true, companyName: true, roomId: true }
-  });
+  const existingSnap = await db.collection('reservations').doc(reservationId).get();
+  const existing = existingSnap.exists ? ({ id: existingSnap.id, ...existingSnap.data() } as any) : null;
 
-  const reservation = await prisma.reservation.deleteMany({
-    where: {
-      id: reservationId,
-      OR: [
-        { userId: currentUser?.id },
-        {
-          room: {
-            userId: currentUser?.id,
-          },
-        },
-      ],
-    },
-  });
+  if (!existing) {
+    return NextResponse.json({ error: "Ugyldig ID" }, { status: 404 });
+  }
+  // Preserve original authorization: owner OR room owner
+  let isRoomOwner = false;
+  if (existing.roomId) {
+    const roomSnap = await db.collection('rooms').doc(String(existing.roomId)).get();
+    const roomData = roomSnap.exists ? roomSnap.data() as any : null;
+    isRoomOwner = !!roomData && roomData.userId === currentUser?.id;
+  }
+  if (existing.userId !== currentUser?.id && !isRoomOwner) {
+    return NextResponse.json({ error: "Ugyldig ID" }, { status: 403 });
+  }
+  await db.collection('reservations').doc(reservationId).delete();
+  const reservation = { count: 1 } as any;
 
   // Invalidate API caches so subsequent GETs return fresh data immediately
   try {
@@ -89,23 +89,8 @@ export async function PUT(request: Request, { params }: { params: Promise<IParam
       return NextResponse.json({ error: "Invalid reservation ID" }, { status: 400 });
     }
     // Optimized: Check permission first, then update
-    const existingReservation = await prisma.reservation.findFirst({
-      where: {
-        id: reservationId,
-        OR: [
-          { userId: currentUser?.id },
-          {
-            room: {
-              userId: currentUser?.id,
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        userId: true,
-      },
-    });
+    const existingReservationSnap = await db.collection('reservations').doc(reservationId).get();
+    const existingReservation = existingReservationSnap.exists ? ({ id: existingReservationSnap.id, ...existingReservationSnap.data() } as any) : null;
 
     if (!existingReservation) {
       return NextResponse.json(
@@ -115,22 +100,12 @@ export async function PUT(request: Request, { params }: { params: Promise<IParam
     }
 
     // Fast update without complex OR condition
-    const reservation = await prisma.reservation.update({
-      data: {
-        start_date: start_date,
-        end_date: end_date,
-        text: text,
-      },
-      where: {
-        id: reservationId,
-      },
-      select: {
-        id: true,
-        start_date: true,
-        end_date: true,
-        text: true,
-      },
+    await db.collection('reservations').doc(reservationId).update({
+      start_date: start_date,
+      end_date: end_date,
+      text: text,
     });
+    const reservation = { id: reservationId, start_date, end_date, text } as any;
 
     // Return success response immediately
     return NextResponse.json({ 

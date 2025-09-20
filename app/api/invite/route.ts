@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import crypto from "crypto";
 import { sendInvitaionLinkMail } from "@/lib/sendMail";
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
@@ -19,9 +19,8 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email },
-    });
+    const existingQs = await db.collection('users').where('email', '==', email).limit(1).get();
+    const existingUser = existingQs.empty ? null : ({ id: existingQs.docs[0].id, ...existingQs.docs[0].data() } as any);
 
     if (existingUser) {
       return new NextResponse("User already exists, no need to invite.", { status: 400 });
@@ -33,25 +32,20 @@ export async function POST(request: Request) {
       .map((word: string) => (word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1)))
       .join(' ');
 
-    const companyId = await prisma.company.findUnique({
-      where: {
-        firmanavn: normalizedCompanyName,
-      },
-    });
+    const companyQs = await db.collection('companies').where('firmanavn', '==', normalizedCompanyName).limit(1).get();
+    const companyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
 
     if (!companyId) {
       return new NextResponse("Firma ID er påkrevd", { status: 400 });
     }
 
     // Check if user is already invited to this company
-    const isTheUserInvited = await prisma.invitedUser.findUnique({
-      where: {
-        email_companyId: {
-          email: email,
-          companyId: companyId?.id,
-        },
-      },
-    });
+    const invitedQs = await db.collection('invitedUsers')
+      .where('email', '==', email)
+      .where('companyId', '==', companyId?.id)
+      .limit(1)
+      .get();
+    const isTheUserInvited = invitedQs.empty ? null : invitedQs.docs[0].data();
     if (isTheUserInvited) {
       return new NextResponse("Bruker allerede invitert", { status: 409 });
     }
@@ -60,40 +54,26 @@ export async function POST(request: Request) {
     const uniqueToken = crypto.randomBytes(32).toString("hex");
     
     // Create invitation record for new user
-    const invitation = await prisma.invitation.create({
-      data: {
-        userEmail: email,
-        token: uniqueToken,
-        companyName,
-        companyId: companyId.id,
-        adminId,
-        adminName,
-        // Note: userId is null for new users until they register
-      },
-    });
+    const invitationRef = db.collection('invitations').doc(uniqueToken);
+    const invitation = {
+      userEmail: email,
+      token: uniqueToken,
+      companyName,
+      companyId: companyId.id,
+      adminId,
+      adminName,
+    } as any;
+    await invitationRef.set(invitation);
     const baseUrl = "http://localhost:3000";
-    
-    // Debug logging
-    console.log("🔍 Invitation Link Debug:");
-    console.log("  companyName:", companyName);
-    console.log("  normalizedCompanyName:", normalizedCompanyName);
-    console.log("  adminId:", adminId);
-    console.log("  email:", email);
     
     // Validate required values for URL generation
     if (!companyName || !adminId) {
-      console.error("❌ Missing required values for invitation link:");
-      console.error("  companyName:", companyName);
-      console.error("  adminId:", adminId);
       return new NextResponse("Missing required data for invitation link", { status: 400 });
     }
     
     // Create invitation link for new user registration
-    // Use original companyName for URL (should already be in slug format)
     const companySlug = companyName.replace(/\s+/g, "-").toLowerCase();
     const invitationLink = `${baseUrl}/redirect/${companySlug}/${adminId}/register?token=${uniqueToken}&invite=true&email=${encodeURIComponent(email)}`;
-    
-    console.log("  Generated invitation link:", invitationLink);
 
     const subject = `${adminName} Inviterte deg til ${companyName}`;
     const htmlContent = `
@@ -106,17 +86,19 @@ export async function POST(request: Request) {
     // Send invitation email
     try {
       await sendInvitaionLinkMail(email, "Invitation", subject, htmlContent);
-      console.log("✅ Invitation email sent successfully to:", email);
     } catch (emailError) {
-      console.error("❌ Failed to send invitation email:", emailError);
-      // Clean up the invitation record if email fails
-      await prisma.invitation.delete({
-        where: { token: uniqueToken },
-      });
-      return new NextResponse("Invitation created but email sending failed", { status: 500 });
+      console.error("Failed to send invitation email:", emailError);
+      // In development, don't fail the invitation if email fails
+      if (process.env.NODE_ENV === "development") {
+        console.log("Development mode: Continuing despite email error. Link:", invitationLink);
+      } else {
+        // Clean up the invitation record if email fails in production
+        await db.collection('invitations').doc(uniqueToken).delete();
+        return new NextResponse("Invitation created but email sending failed", { status: 500 });
+      }
     }
 
-    return NextResponse.json({ invitation });
+    return NextResponse.json({ invitation: { token: uniqueToken, ...invitation } });
   } catch (error) {
     console.error(error);
     return new NextResponse("Klarte ikke sende invitasjonen", { status: 500 });

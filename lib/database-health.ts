@@ -1,5 +1,5 @@
 // Database health check utility
-import prisma from './prismaDB';
+import { db } from './firebaseAdmin';
 
 export async function checkDatabaseConnection(): Promise<{
   isConnected: boolean;
@@ -7,28 +7,11 @@ export async function checkDatabaseConnection(): Promise<{
   details?: any;
 }> {
   try {
-    // Check if DATABASE_URL is set
-    if (!process.env.DATABASE_URL) {
-      return {
-        isConnected: false,
-        error: 'DATABASE_URL environment variable is not set',
-      };
-    }
-
-    // Test the connection by performing a simple query
-    await prisma.$connect();
-    
-    // Try to query the database
-    const result = await prisma.$runCommandRaw({
-      ping: 1
-    });
-
-    await prisma.$disconnect();
-
-    return {
-      isConnected: true,
-      details: result,
-    };
+    // Test Firestore by a simple read/write
+    const ref = db.collection('health').doc('_ping');
+    await ref.set({ ts: Date.now() }, { merge: true });
+    const snap = await ref.get();
+    return { isConnected: snap.exists, details: snap.data() };
   } catch (error) {
     console.error('Database connection test failed:', error);
     
@@ -68,7 +51,7 @@ export async function testDatabaseOperations(): Promise<{
 
   try {
     // Test read operation
-    await prisma.user.findFirst();
+    await db.collection('users').limit(1).get();
     canRead = true;
   } catch (error) {
     errors.push(`Read test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -76,20 +59,9 @@ export async function testDatabaseOperations(): Promise<{
 
   try {
     // Test write operation (create and delete a test document)
-    const testUser = await prisma.user.create({
-      data: {
-        email: `test-${Date.now()}@example.com`,
-        firstname: 'Test',
-        lastname: 'User',
-        hashedPassword: 'test-password',
-      },
-    });
-
-    // Clean up the test user
-    await prisma.user.delete({
-      where: { id: testUser.id },
-    });
-
+    const coll = db.collection('health');
+    const docRef = await coll.add({ type: 'write-test', ts: Date.now() });
+    await coll.doc(docRef.id).delete();
     canWrite = true;
   } catch (error) {
     errors.push(`Write test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

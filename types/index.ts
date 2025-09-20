@@ -1,14 +1,18 @@
-import { Room, User, Reservation } from "@prisma/client";
-
-export type SafeRoom = Omit<Room, "createdAt"> & {
+export type SafeRoom = {
+  id: string;
+  userId?: string | null;
+  companyId?: string | null;
+  firmanavn?: string | null;
+  name?: string | null;
   createdAt: string;
   companyName: string;
 };
 
-export type safeUser = Omit<
-  User,
-  "createdAt" | "updatedAt" | "emailVerified"
-> & {
+export type safeUser = {
+  id: string;
+  email?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
   createdAt?: string;
   updatedAt?: string;
   emailVerified?: string | null;
@@ -16,10 +20,13 @@ export type safeUser = Omit<
   company?: string | null;
 };
 
-export type SafeReservations = Omit<
-  Reservation,
-  "createdAt" | "start_date" | "end_date" | "room"
-> & {
+export type SafeReservations = {
+  id: string;
+  roomId: string;
+  roomName?: string | null;
+  companyId?: string | null;
+  companyName?: string | null;
+  userId: string;
   createdAt?: string;
   start_date?: string;
   end_date?: string;

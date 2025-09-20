@@ -1,6 +1,6 @@
 import { getUsersByCompanyId } from "@/app/server/actions/getUsersByCompanyId";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(
   request: Request,
@@ -15,11 +15,8 @@ export async function GET(
       .map(word => word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
     
-    const company = await prisma.company.findUnique({
-      where: {
-        firmanavn: convertedCompanyName,
-      },
-    });
+    const qs = await db.collection('companies').where('firmanavn', '==', convertedCompanyName).limit(1).get();
+    const company = qs.empty ? null : ({ id: qs.docs[0].id, ...qs.docs[0].data() } as any);
     
     const response = NextResponse.json(company);
     

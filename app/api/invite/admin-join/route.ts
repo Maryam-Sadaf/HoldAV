@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingQs = await db.collection('users').where('email', '==', email).limit(1).get();
+    const existingUser = existingQs.empty ? null : ({ id: existingQs.docs[0].id, ...existingQs.docs[0].data() } as any);
     if (existingUser) {
       return new NextResponse('User already exists', { status: 400 });
     }
@@ -40,20 +41,16 @@ export async function POST(request: Request) {
       .map((word: string) => (word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1)))
       .join(' ');
 
-    const companyId = await prisma.company.findUnique({
-      where: {
-        firmanavn: normalizedCompanyName,
-      },
-    });
+    const companyQs = await db.collection('companies').where('firmanavn', '==', normalizedCompanyName).limit(1).get();
+    const companyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
     if (!companyId) {
       throw new Error("companyId is required");
     }
 
     // If token is provided, validate the invitation
     if (token) {
-      const invitation = await prisma.invitation.findUnique({
-        where: { token: token },
-      });
+      const invitationSnap = await db.collection('invitations').doc(token).get();
+      const invitation = invitationSnap.exists ? ({ id: invitationSnap.id, ...invitationSnap.data() } as any) : null;
       
       if (!invitation) {
         return new NextResponse('Invalid invitation token', { status: 400 });
@@ -65,46 +62,32 @@ export async function POST(request: Request) {
     }
 
     // Create new user
-    const user = await prisma.user.create({
-      data: {
-        email: email,
-        firstname: firstname,
-        lastname: lastname,
-        hashedPassword: hashedPassword,
-        accessToken: null,
-      },
-    });
+    const userRef = db.collection('users').doc();
+    const now = new Date();
+    const user = { id: userRef.id, _id: userRef.id, email, firstname, lastname, hashedPassword, accessToken: null, role: 'user', emailVerified: true, createdAt: now, updatedAt: now } as any;
+    await userRef.set({ _id: userRef.id, email, firstname, lastname, hashedPassword, accessToken: null, role: 'user', emailVerified: true, createdAt: now, updatedAt: now });
 
     // Prevent duplicate invitations for the same company
-    const alreadyInvited = await prisma.invitedUser.findUnique({
-      where: {
-        email_companyId: {
-          email: email,
-          companyId: companyId.id,
-        },
-      },
-    });
+    const invitedQs = await db.collection('invitedUsers').where('email', '==', email).where('companyId', '==', companyId.id).limit(1).get();
+    const alreadyInvited = invitedQs.empty ? null : invitedQs.docs[0].data();
     if (alreadyInvited) {
       return new NextResponse('User already invited to this company', { status: 409 });
     }
 
     // Create invited user record
-    const insertedInvitedUser = await prisma.invitedUser.create({
-      data: {
-        companyId: companyId?.id,
-        userId: user?.id,
-        firstname: user?.firstname,
-        lastname: user?.lastname,
-        email: user?.email,
-        adminId: adminId,
-      },
+    const invitedDoc = await db.collection('invitedUsers').add({
+      companyId: companyId?.id,
+      userId: user?.id,
+      firstname: user?.firstname,
+      lastname: user?.lastname,
+      email: user?.email,
+      adminId: adminId,
     });
+    const insertedInvitedUser = { id: invitedDoc.id, companyId: companyId?.id, userId: user?.id, firstname: user?.firstname, lastname: user?.lastname, email: user?.email, adminId } as any;
 
     // If this was from an invitation token, clean up the invitation
     if (token) {
-      await prisma.invitation.delete({
-        where: { token: token },
-      });
+      await db.collection('invitations').doc(token).delete();
     }
 
     return NextResponse.json(insertedInvitedUser);

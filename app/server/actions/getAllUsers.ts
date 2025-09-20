@@ -1,5 +1,5 @@
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function getAllUsers() {
   try {
@@ -8,15 +8,12 @@ export async function getAllUsers() {
       return;
     }
 
-    const users = await prisma.user.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const qs = await db.collection('users').orderBy('createdAt', 'desc').get();
+    const users = qs.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
 
-    const safeUser = users.map((user) => ({
+    const safeUser = users.map((user: any) => ({
       ...user,
-      createdAt: user.createdAt.toISOString(),
+      createdAt: user.createdAt?.toDate ? user.createdAt.toDate().toISOString() : user.createdAt,
     }));
 
     return safeUser;

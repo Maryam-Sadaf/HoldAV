@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(request: Request) {
   try {
@@ -18,11 +18,8 @@ export async function GET(request: Request) {
     console.log("🔍 Validating invitation:", { token: token.substring(0, 8) + "...", email });
 
     // Look up the invitation in the database
-    const invitation = await prisma.invitation.findUnique({
-      where: {
-        token: token,
-      }
-    });
+    const invSnap = await db.collection('invitations').doc(token).get();
+    const invitation = invSnap.exists ? ({ id: invSnap.id, ...invSnap.data() } as any) : null;
 
     // Check if invitation exists
     if (!invitation) {
@@ -48,9 +45,8 @@ export async function GET(request: Request) {
     // Check if invitation is already used (optional - depends on your business logic)
     // You might want to add a 'used' field to your invitation table
     // For now, we'll just check if the user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email }
-    });
+    const existingQs = await db.collection('users').where('email', '==', email).limit(1).get();
+    const existingUser = existingQs.empty ? null : ({ id: existingQs.docs[0].id, ...existingQs.docs[0].data() } as any);
 
     if (existingUser) {
       console.log("❌ User already exists for this email");

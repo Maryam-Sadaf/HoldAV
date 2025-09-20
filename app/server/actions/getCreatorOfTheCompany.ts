@@ -1,5 +1,5 @@
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 interface IParams {
   companyName?: string;
@@ -20,32 +20,11 @@ export async function getCreatorByCompanyName(params: IParams) {
       .join(' ');
     
     // First try to get company with user relation
-    let creator: any = await prisma.company.findUnique({
-      where: {
-        firmanavn: convertedCompanyName,
-      },
-      include: { user: true },
-    }).catch((error: unknown) => {
-      console.warn("Error fetching creator with user relation:", error);
-      return null;
-    });
+    const qs = await db.collection('companies').where('firmanavn', '==', convertedCompanyName).limit(1).get();
+    let creator: any = qs.empty ? null : ({ id: qs.docs[0].id, ...qs.docs[0].data() } as any);
 
     // If that fails, try without user relation
-    if (!creator) {
-      creator = await prisma.company.findUnique({
-        where: {
-          firmanavn: convertedCompanyName,
-        },
-      }).catch((error: unknown) => {
-        console.warn("Error fetching creator without user relation:", error);
-        return null;
-      });
-
-      // Add null user to the result
-      if (creator) {
-        creator = { ...creator, user: null };
-      }
-    }
+    // In Firestore, no join; keep creator as-is
     
     return creator;
   } catch (error) {

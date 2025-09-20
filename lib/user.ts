@@ -1,12 +1,9 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 const getUserAccessToken = async (userEmail: any) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: {
-        email: userEmail,
-      },
-    });
+    const qs = await db.collection('users').where('email', '==', userEmail).limit(1).get();
+    const user = qs.empty ? null : ({ id: qs.docs[0].id, ...qs.docs[0].data() } as any);
 
     if (user && user.accessToken) {
       return user.accessToken;

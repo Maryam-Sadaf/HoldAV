@@ -1,5 +1,5 @@
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
@@ -14,11 +14,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: {
-        email: session.user.email as string,
-      },
-    });
+    const currentUserQs = await db.collection('users').where('email', '==', session.user.email as string).limit(1).get();
+    const currentUser = currentUserQs.empty ? null : ({ id: currentUserQs.docs[0].id, ...currentUserQs.docs[0].data() } as any);
 
     if (!currentUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -36,30 +33,51 @@ export async function POST(request: Request) {
 
     // Convert URL format back to company name format using consistent utility
     const convertedCompanyName = companyName ? slugToCompanyName(companyName) : "";
+    const providedCompanyName = companyName ?? "";
+    const slugLower = (companyName || "").replace(/\s+/g, "-").toLowerCase();
+    const decodedCompanyName = (() => {
+      try { return decodeURIComponent(companyName || ""); } catch { return companyName || ""; }
+    })();
+    const decodedSpaceCompanyName = (companyName || "").includes('%20')
+      ? (companyName || "").replace(/%20/g, ' ')
+      : decodedCompanyName;
 
     // Format room name with proper title case before saving to database
     const formattedRoomName = formatRoomNameForStorage(name.trim());
 
     // First, find the company to get its ID
-    const company = await prisma.company.findUnique({
-      where: {
-        firmanavn: convertedCompanyName,
-      },
-    });
+    let company: any = null;
+    const candidates = [
+      convertedCompanyName,
+      providedCompanyName,
+      decodedCompanyName,
+      decodedSpaceCompanyName,
+      slugLower,
+    ].filter((v, i, arr) => !!v && arr.indexOf(v) === i);
+    for (const cand of candidates) {
+      const q = await db.collection('companies').where('firmanavn', '==', cand).limit(1).get();
+      if (!q.empty) {
+        company = { id: q.docs[0].id, ...q.docs[0].data() } as any;
+        break;
+      }
+    }
 
     if (!company) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     // Create the room with both companyId and companyName
-    const createRoom = await prisma.room.create({
-      data: {
-        name: formattedRoomName,
-        userId: currentUser?.id,
-        companyId: company.id,
-        companyName: convertedCompanyName,
-      },
-    });
+    const roomRef = db.collection('rooms').doc();
+    const now = new Date();
+    const createRoom = {
+      id: roomRef.id,
+      userId: currentUser?.id,
+      companyId: company.id,
+      name: formattedRoomName,
+      createdAt: now,
+      companyName: decodedSpaceCompanyName || providedCompanyName || convertedCompanyName,
+    } as any;
+    await roomRef.set(createRoom);
 
     return NextResponse.json(createRoom);
   } catch (error) {

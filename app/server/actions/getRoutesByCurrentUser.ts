@@ -1,5 +1,5 @@
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { unstable_cache } from "next/cache";
 
 interface IParams {
@@ -9,58 +9,22 @@ interface IParams {
 // Cache the routes query to avoid repeated DB calls
 const getCachedRoutes = unstable_cache(
   async (userId: string) => {
-    // Single optimized query with join to get both creator and company data
-    const [creatorCompany, invitedUserData] = await Promise.all([
-      // Check if user is a creator (company owner)
-      prisma.company.findFirst({
-        where: { userId: userId },
-        select: {
-          id: true,
-          firmanavn: true,
-          userId: true,
-          user: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-              email: true,
-            }
-          }
-        },
-      }),
-      // Check if user is an invited user
-      prisma.invitedUser.findUnique({
-        where: { userId: userId },
-        select: {
-          companyId: true,
-        }
-      })
+    const [creatorQs, invitedQs] = await Promise.all([
+      db.collection('companies').where('userId', '==', userId).limit(1).get(),
+      db.collection('invitedUsers').where('userId', '==', userId).limit(1).get(),
     ]);
+    const creatorCompany = creatorQs.empty ? null : ({ id: creatorQs.docs[0].id, ...creatorQs.docs[0].data() } as any);
+    const invitedUserData = invitedQs.empty ? null : (invitedQs.docs[0].data() as any);
 
-    // Performance: If user is invited, get the company data (this could be optimized further)
-    let companyData = null;
+    let companyData: any = null;
     if (invitedUserData?.companyId) {
-      companyData = await prisma.company.findUnique({
-        where: { id: invitedUserData.companyId },
-        select: {
-          id: true,
-          firmanavn: true,
-          userId: true,
-          user: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-              email: true,
-            }
-          }
-        },
-      });
+      const companySnap = await db.collection('companies').doc(invitedUserData.companyId).get();
+      companyData = companySnap.exists ? ({ id: companySnap.id, ...companySnap.data() } as any) : null;
     }
 
     return {
       creator: creatorCompany,
-      company: companyData
+      company: companyData,
     };
   },
   ['user-routes'],

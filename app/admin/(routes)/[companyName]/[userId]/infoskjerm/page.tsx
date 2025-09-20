@@ -2,6 +2,7 @@ import React from "react";
 import ReservationClient from "../reservasjoner/ReservationClient";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { cookies } from "next/headers";
 
 interface IParams {
   companyName: string;
@@ -24,16 +25,18 @@ const Infoskjerm = async ({ params }: { params: Promise<IParams> }) => {
   let reservations: any[] = [];
   try {
     if (currentUser?.id) {
-      let apiUrl = '';
-      if (currentUser?.role === 'admin') {
-        // For admin users, fetch company reservations
-        apiUrl = `${process.env.NEXT_PUBLIC_URL}/api/reservation/company/${companyName}`;
-      } else {
-        // For regular users, fetch user reservations
-        apiUrl = `${process.env.NEXT_PUBLIC_URL}/api/reservation/user/${currentUser.id}`;
-      }
+      const base = (process.env.NEXT_PUBLIC_URL || '').replace(/\/$/, '');
+      const path = currentUser?.role === 'admin'
+        ? `/api/reservation/company/${encodeURIComponent(companyName)}`
+        : `/api/reservation/user/${currentUser.id}`;
+      const apiUrl = base ? `${base}${path}` : path;
 
-      const res = await fetch(apiUrl, { next: { revalidate: 30 } }); // Reduced cache time for more frequent updates
+      const cookieStore = await cookies();
+      const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+      const res = await fetch(apiUrl, {
+        next: { revalidate: 30 },
+        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+      });
       if (res.ok) {
         reservations = await res.json() || [];
       }

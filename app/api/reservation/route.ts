@@ -1,6 +1,6 @@
 import getCurrentUser from "@/app/server/actions/getCurrentUser";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { slugToCompanyName } from "@/utils/slugUtils";
 import { cache, generateCacheKey, CACHE_KEYS } from "@/lib/cache";
 
@@ -26,18 +26,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Convert URL format company name to database format using consistent utility
+    // Normalize company name from slug or encoded input
     const convertedCompanyName = companyName ? slugToCompanyName(companyName) : "";
+    const decodedCompanyName = (() => { try { return decodeURIComponent(companyName || ""); } catch { return companyName || ""; } })();
+    const decodedSpaceCompanyName = (companyName || "").includes('%20')
+      ? (companyName || "").replace(/%20/g, ' ')
+      : decodedCompanyName;
 
-    // Optimized: Single query to get company ID and check room exists
-    const company = await prisma.company.findUnique({
-      where: {
-        firmanavn: convertedCompanyName,
-      },
-      select: {
-        id: true,
-      }
-    });
+    // Optimized: Single query to get company ID (try multiple candidates)
+    let company: any = null;
+    const candidates = [convertedCompanyName, decodedCompanyName, decodedSpaceCompanyName]
+      .filter((v, i, a) => !!v && a.indexOf(v) === i);
+    for (const cand of candidates) {
+      const q = await db.collection('companies').where('firmanavn', '==', cand).limit(1).get();
+      if (!q.empty) { company = { id: q.docs[0].id, ...q.docs[0].data() } as any; break; }
+    }
 
     if (!company) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
@@ -47,15 +50,17 @@ export async function POST(request: Request) {
     const newStart = new Date(start_date);
     const newEnd = new Date(end_date);
 
-    const conflictingReservation = await prisma.reservation.findFirst({
-      where: {
-        roomId: roomId,
-        AND: [
-          { start_date: { lt: newEnd } },
-          { end_date: { gt: newStart } },
-        ],
-      },
-      select: { id: true },
+    // Firestore limitation: range filters on multiple fields are not allowed.
+    // Query by one range (start_date) and filter end_date in-memory.
+    const conflictingQs = await db.collection('reservations')
+      .where('roomId', '==', roomId)
+      .where('start_date', '<', newEnd)
+      .limit(50)
+      .get();
+    const conflictingReservation = conflictingQs.docs.find((d) => {
+      const data = d.data() as any;
+      const existingEnd = data?.end_date?.toDate ? data.end_date.toDate() : new Date(data?.end_date);
+      return existingEnd > newStart;
     });
 
     if (conflictingReservation) {
@@ -66,27 +71,22 @@ export async function POST(request: Request) {
     }
 
     // Optimized: Direct reservation creation without nested room update
-    const reservation = await prisma.reservation.create({
-      data: {
-        roomId: roomId,
-        roomName: roomName,
-        companyId: company.id,
-        companyName: convertedCompanyName,
-        userId: currentUser.id,
-        start_date: start_date,
-        duration,
-        text: text,
-        end_date: end_date,
-      },
-      select: {
-        id: true,
-        roomId: true,
-        roomName: true,
-        start_date: true,
-        end_date: true,
-        text: true,
-      },
-    });
+    const docRef = db.collection('reservations').doc();
+    const reservationData = {
+      _id: docRef.id,
+      roomId: roomId,
+      roomName: roomName,
+      companyId: company.id,
+      companyName: decodedSpaceCompanyName || convertedCompanyName,
+      userId: currentUser.id,
+      start_date: newStart,
+      duration: String(duration),
+      text: text,
+      end_date: newEnd,
+      createdAt: new Date(),
+    } as any;
+    await docRef.set(reservationData);
+    const reservation = { id: docRef.id, ...reservationData } as any;
 
     // PERFORMANCE: Invalidate relevant caches after creating reservation
     const userCacheKey = generateCacheKey(CACHE_KEYS.USER_RESERVATIONS, currentUser.id);
