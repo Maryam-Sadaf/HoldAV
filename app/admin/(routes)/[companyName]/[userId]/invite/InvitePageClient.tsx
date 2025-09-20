@@ -72,7 +72,7 @@ const InvitePageClient = ({
     const company = companyName?.replace(/\s+/g, "-");
     
     // Show immediate feedback that the invitation is being processed
-    toast.loading("Sender invitasjon... Dette kan ta noen sekunder.", { id: "invite-loading" });
+    // toast.loading("Sender invitasjon... Dette kan ta noen sekunder.", { id: "invite-loading" });
     
     try {
       const response = await axios.post(`/api/invite`, {
