@@ -18,6 +18,7 @@ export type safeUser = {
   emailVerified?: string | null;
   companyName?: string | null;
   company?: string | null;
+  role?: string | null;
 };
 
 export type SafeReservations = {

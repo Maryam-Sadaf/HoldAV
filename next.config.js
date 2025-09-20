@@ -2,11 +2,11 @@
 const nextConfig = {
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['bcrypt'],
-    turbo: {
-      loaders: {
-        '.svg': ['@svgr/webpack']
-      }
+  },
+  serverExternalPackages: ['bcrypt'],
+  turbopack: {
+    rules: {
+      '*.svg': ['@svgr/webpack']
     }
   },
   // Add webpack configuration for path resolution
@@ -49,11 +49,6 @@ const nextConfig = {
   },
   // Enable modern JavaScript
   transpilePackages: [],
-  // Ensure Prisma engines are included in serverless functions
-  outputFileTracingIncludes: {
-    'pages/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*', './node_modules/.prisma/client/**/*'],
-    'app/api/**': ['./node_modules/@prisma/client/**/*', './node_modules/prisma/**/*', './node_modules/.prisma/client/**/*']
-  },
   // Headers for static assets and performance
   async headers() {
     return [
