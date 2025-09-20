@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FieldErrors, FieldValues, UseFormRegister } from "react-hook-form";
 
 interface InputProps {
@@ -28,6 +29,10 @@ const Input: React.FC<InputProps> = ({
   register,
   errors,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordField = type === "password";
+  const inputType = isPasswordField ? (showPassword ? "text" : "password") : type;
+
   return (
     <div className="w-full relative">
       <input
@@ -36,12 +41,13 @@ const Input: React.FC<InputProps> = ({
         {...register(id, {
           required: { value: required, message: "This field is required" },
         })}
-        type={type}
+        type={inputType}
         className={`
           peer
           w-full
           p-3
           pt-4
+          ${isPasswordField ? "pr-10" : ""}
           font-light
           bg-white
           border-2
@@ -58,6 +64,17 @@ const Input: React.FC<InputProps> = ({
           }
         `}
       />
+      {isPasswordField && (
+        <button
+          type="button"
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          title={showPassword ? "Hide password" : "Show password"}
+          onClick={() => setShowPassword((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+        >
+          {showPassword ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
+        </button>
+      )}
       <label
         className={`
           absolute text-sm duration-150 transform -translate-y-3 top-4 z-10 origin-[0] left-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-70 peer-focus:-translate-y-3

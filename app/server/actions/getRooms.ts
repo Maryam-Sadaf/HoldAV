@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import getCurrentUser from "./getCurrentUser";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
@@ -9,26 +9,12 @@ export async function getRooms() {
     if (!session) {
       return;
     }
-    const rooms = await prisma.room.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        user: {
-          include: {
-            company: true,
-          },
-        },
-      },
-    });
+    const qs = await db.collection('rooms').orderBy('createdAt', 'desc').get();
+    const rooms = qs.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
 
-    const safeRooms = rooms.map((room) => ({
+    const safeRooms = rooms.map((room: any) => ({
       ...room,
-      createdAt: room.createdAt.toISOString(),
-      companyName: room.user?.company.map((item) => ({
-        id: item?.id,
-        companyName: item?.firmanavn,
-      })),
+      createdAt: room.createdAt?.toDate ? room.createdAt.toDate().toISOString() : room.createdAt,
     }));
 
     return safeRooms;

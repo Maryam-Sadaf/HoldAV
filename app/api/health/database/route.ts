@@ -26,7 +26,9 @@ export async function GET() {
       errors: operationsResult.errors,
       timestamp: new Date().toISOString(),
       environment: {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasFirebaseProjectId: !!process.env.FIREBASE_PROJECT_ID,
+        hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+        hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
         nodeEnv: process.env.NODE_ENV,
       },
     });

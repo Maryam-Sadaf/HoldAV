@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
 export async function POST(request: Request): Promise<void | Response> {
   try {
@@ -8,21 +8,15 @@ export async function POST(request: Request): Promise<void | Response> {
       throw new Error("Ugyldig data");
     }
 
-    const invitedToken = await prisma.invitation.findUnique({
-      where: {
-        token: token,
-      },
-    });
+    const tokenSnap = await db.collection('invitations').doc(token).get();
+    const invitedToken = tokenSnap.exists ? ({ id: tokenSnap.id, ...tokenSnap.data() } as any) : null;
     if (!invitedToken) {
       return new NextResponse("Ugyldig token", { status: 400 });
     }
 
     // check wash company exists bash n storiwah f inviteUser u bash njbdo company name
-    const companyId = await prisma.company.findUnique({
-      where: {
-        firmanavn: companyName,
-      },
-    });
+    const companyQs = await db.collection('companies').where('firmanavn', '==', companyName).limit(1).get();
+    const companyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
     if (!companyId) {
       throw new Error("FirmaID er påkrevd");
     }
@@ -31,39 +25,24 @@ export async function POST(request: Request): Promise<void | Response> {
     }
 
     // check if the user exists based on params
-    const userByToken = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    const userSnap = await db.collection('users').doc(userId).get();
+    const userByToken = userSnap.exists ? ({ id: userSnap.id, ...userSnap.data() } as any) : null;
 
     if (!userByToken) {
       throw new Error("Ugyldig data");
     }
 
-    const insertedInvitedUser = await prisma.invitedUser.create({
-      data: {
-        companyId: companyId?.id,
-        userId: userByToken?.id,
-        firstname: userByToken?.firstname,
-        lastname: userByToken?.lastname,
-        email: userByToken?.email,
-        adminId: adminId,
-      },
+    const invitedRef = await db.collection('invitedUsers').add({
+      companyId: companyId?.id,
+      userId: userByToken?.id,
+      firstname: userByToken?.firstname,
+      lastname: userByToken?.lastname,
+      email: userByToken?.email,
+      adminId: adminId,
     });
-    await prisma.invitation.delete({
-      where: {
-        token: token,
-      },
-    });
-    await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        accessToken: null,
-      },
-    });
+    const insertedInvitedUser = { id: invitedRef.id } as any;
+    await db.collection('invitations').doc(token).delete();
+    await db.collection('users').doc(userId).update({ _id: userId, accessToken: null, updatedAt: new Date() });
 
     return NextResponse.json(insertedInvitedUser);
 

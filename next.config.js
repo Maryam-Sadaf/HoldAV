@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     optimizeCss: true,
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma', 'bcrypt'],
+    serverComponentsExternalPackages: ['bcrypt'],
     turbo: {
       loaders: {
         '.svg': ['@svgr/webpack']
@@ -22,10 +22,7 @@ const nextConfig = {
     // Force refresh for Vercel deployment
     console.log('Webpack config loaded for Vercel deployment')
     
-    if (isServer) {
-      // Ensure prisma is treated as external on server so engines resolve from node_modules
-      config.externals = [...(config.externals || []), '@prisma/client', 'prisma']
-    }
+    // Remove Prisma externals; Firestore Admin runs fine without special externals
 
     if (!dev && !isServer) {
       // CSS tree-shaking and minification

@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 interface IParams {
   companyName?: string;
@@ -8,36 +8,22 @@ export async function getUsersByCompanyId(params: IParams) {
     const { companyName } = params;
     
     if (!companyName) {
-      console.log('getUsersByCompanyId: No company name provided');
       return [];
     }
 
-    console.log('getUsersByCompanyId: Looking for company:', companyName);
-
-    const getCompanyId = await prisma.company.findUnique({
-      where: {
-        firmanavn: companyName,
-      },
-    });
+    const companyQs = await db.collection('companies').where('firmanavn', '==', companyName).limit(1).get();
+    const getCompanyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
 
     if (!getCompanyId) {
-      console.log('getUsersByCompanyId: Company not found:', companyName);
       return [];
     }
 
-    console.log('getUsersByCompanyId: Found company ID:', getCompanyId.id);
+    const usersQs = await db.collection('invitedUsers').where('companyId', '==', getCompanyId.id).get();
+    const users = usersQs.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    const users = await prisma.invitedUser.findMany({
-      where: {
-        companyId: getCompanyId.id,
-      },
-    });
-
-    console.log('getUsersByCompanyId: Found users count:', users.length);
-
-    const safeUser = users.map((user) => ({
+    const safeUser = users.map((user: any) => ({
       ...user,
-      createdAt: user.createdAt.toISOString(),
+      createdAt: user.createdAt?.toDate ? user.createdAt.toDate().toISOString() : user.createdAt,
     }));
 
     return safeUser;

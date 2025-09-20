@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import getCurrentUser from "./getCurrentUser";
 
 interface IParams {
@@ -19,17 +19,10 @@ export default async function getReservationsByRoomId(params: IParams) {
       throw new Error("roomId is required");
     }
 
-    const reservations = await prisma.reservation.findMany({
-      where: {
-        roomId: roomId,
-      },
-      include: {
-        room: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const qs = await db.collection('reservations').where('roomId', '==', roomId).orderBy('createdAt', 'desc').get();
+    const reservations = qs.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+    const roomSnap = await db.collection('rooms').doc(String(roomId)).get();
+    const room = roomSnap.exists ? ({ id: roomSnap.id, ...roomSnap.data() } as any) : null;
     const formatDate = (inputDate: any) => {
       const formattedDate = new Date(inputDate).toLocaleString("en-US", {
         year: "numeric",
@@ -42,15 +35,12 @@ export default async function getReservationsByRoomId(params: IParams) {
       return formattedDate;
     };
 
-    const safeReservations = reservations.map((reservation) => ({
+    const safeReservations = reservations.map((reservation: any) => ({
       ...reservation,
-      createdAt: formatDate(reservation.createdAt),
-      startDate: formatDate(reservation.start_date),
-      endDate: formatDate(reservation.end_date),
-      room: {
-        ...reservation.room,
-        createdAt: formatDate(reservation.room.createdAt),
-      },
+      createdAt: formatDate(reservation.createdAt?.toDate ? reservation.createdAt.toDate() : reservation.createdAt),
+      startDate: formatDate(reservation.start_date?.toDate ? reservation.start_date.toDate() : reservation.start_date),
+      endDate: formatDate(reservation.end_date?.toDate ? reservation.end_date.toDate() : reservation.end_date),
+      room: room ? { ...room, createdAt: formatDate(room.createdAt?.toDate ? room.createdAt.toDate() : room.createdAt) } : null,
     }));
 
     return safeReservations;

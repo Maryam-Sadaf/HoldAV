@@ -20,9 +20,7 @@ export async function GET(
       )
       .join(" ");
 
-    console.log('API: Converting companyId:', companyId, 'to companyName:', convertedCompanyName);
-
-    const users = await getUsersByCompanyId({ companyName: convertedCompanyName });
+  const users = await getUsersByCompanyId({ companyName: convertedCompanyName });
     return NextResponse.json(users);
   } catch (error) {
     console.error('API Error in /api/users/company/[companyId]:', error);

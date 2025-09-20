@@ -1,6 +1,6 @@
 import { AuthOptions } from "next-auth";
-import prisma from "@/lib/prismaDB";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { FirestoreAdapter } from "@next-auth/firebase-adapter";
+import { db } from "@/lib/firebaseAdmin";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import GoogleProvider from "next-auth/providers/google";
@@ -12,7 +12,7 @@ export const config = {
 };
 
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: FirestoreAdapter(db as any),
   ...( { trustHost: true } as any ),
   providers: [
     GoogleProvider({
@@ -29,11 +29,12 @@ export const authOptions: AuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
         }
-        const user = await prisma?.user?.findUnique({
-          where: {
-            email: credentials?.email,
-          },
-        });
+        const q = await (db as any)
+          .collection('users')
+          .where('email', '==', credentials.email)
+          .limit(1)
+          .get();
+        const user = q.empty ? null : ({ id: q.docs[0].id, ...q.docs[0].data() } as any);
         if (!user || !user.hashedPassword) {
           throw new Error("Invalid credentials");
         }

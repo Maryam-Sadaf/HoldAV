@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import getCurrentUser from "./getCurrentUser";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
@@ -11,27 +11,12 @@ interface IParams {
 
 const getCachedRooms = unstable_cache(
   async (companyName: string) => {
-    return await prisma.room.findMany({
-      where: {
-        companyName: companyName,
-      },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        companyName: true,
-        user: {
-          select: {
-            id: true,
-            firstname: true,
-            lastname: true,
-          }
-        }
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const qs = await db
+      .collection('rooms')
+      .where('companyName', '==', companyName)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return qs.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
   },
   ['rooms-by-company'],
   {
@@ -49,9 +34,9 @@ export default async function getRoomsByCompanyName(params: IParams) {
     
     const rooms = await getCachedRooms(companyName);
 
-    const safeRooms = rooms.map((room) => ({
+    const safeRooms = rooms.map((room: any) => ({
       ...room,
-      createdAt: room.createdAt instanceof Date ? room.createdAt.toISOString() : room.createdAt,
+      createdAt: room.createdAt?.toDate ? room.createdAt.toDate().toISOString() : room.createdAt,
       companyName: companyName,
     }));
 

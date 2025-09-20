@@ -1,12 +1,10 @@
 {
-  "buildCommand": "npx prisma generate && next build",
-  "installCommand": "npm install && npx prisma generate",
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
-    },
-    "pages/api/**": {
-      "maxDuration": 30
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }

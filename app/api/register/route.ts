@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
   try {
-    // Validate environment variables
-    if (!process.env.DATABASE_URL) {
-      console.error("DATABASE_URL environment variable is not set");
-      return NextResponse.json(
-        { error: "Database configuration error" },
-        { status: 500 }
-      );
-    }
+    // Firestore does not require DATABASE_URL check
 
     const body = await request.json();
     const { email, firstname, lastname, password, companyId, adminId, isInvited, token } = body;
@@ -33,9 +26,8 @@ export async function POST(request: Request) {
       
       console.log("🔍 Looking up invitation with token:", token);
       
-      invitation = await prisma.invitation.findUnique({
-        where: { token }
-      });
+      const invSnap = await db.collection('invitations').doc(token).get();
+      invitation = invSnap.exists ? ({ id: invSnap.id, ...invSnap.data() } as any) : null;
 
       console.log("🔍 Invitation lookup result:", invitation);
 
@@ -74,9 +66,8 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingQs = await db.collection('users').where('email', '==', email).limit(1).get();
+    const existingUser = existingQs.empty ? null : ({ id: existingQs.docs[0].id, ...existingQs.docs[0].data() } as any);
 
     if (existingUser) {
       return NextResponse.json(
@@ -88,13 +79,18 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 12);
     
     // Create user with or without company association
+    const now = new Date();
     const userData = {
       email,
       firstname,
       lastname,
       hashedPassword,
       accessToken: null,
-    };
+      role: 'user',
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    } as any;
 
     // If this is an invitation-based signup, add company association
     console.log("🔍 Company association check:", {
@@ -116,29 +112,25 @@ export async function POST(request: Request) {
       invitationCompanyId: invitation?.companyId
     });
 
-    const user = await prisma.user.create({
-      data: userData,
-    });
+    const userRef = db.collection('users').doc();
+    const user = { id: userRef.id, _id: userRef.id, ...userData } as any;
+    await userRef.set({ ...userData, _id: userRef.id });
 
     // If this was an invitation-based signup, create invitedUser record and mark invitation as used
     if (invitation) {
       try {
         // Create invitedUser record
-        await prisma.invitedUser.create({
-          data: {
-            companyId: invitation.companyId,
-            userId: user.id,
-            firstname: user.firstname,
-            lastname: user.lastname,
-            email: user.email,
-            adminId: invitation.adminId,
-          },
+        await db.collection('invitedUsers').add({
+          companyId: invitation.companyId,
+          userId: user.id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          adminId: invitation.adminId,
         });
 
         // Mark invitation as used by deleting it
-        await prisma.invitation.delete({
-          where: { token },
-        });
+        await db.collection('invitations').doc(token).delete();
 
         console.log("✅ User successfully associated with company and invitation marked as used");
       } catch (error) {

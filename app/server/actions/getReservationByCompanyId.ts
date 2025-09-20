@@ -1,5 +1,5 @@
 import getCurrentUser from "./getCurrentUser";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 interface IParams {
   companyName?: string;
@@ -15,34 +15,19 @@ export default async function getReservationByCompanyId(params: IParams) {
     if (!currentUser) {
       return;
     }
-    const userWithCompany = await prisma.user.findUnique({
-      where: {
-        id: currentUser.id,
-      },
-      include: {
-        company: true,
-      },
-    });
+    // Firestore: skip join, not used later
+    const userWithCompany = { id: currentUser.id } as any;
 
     if (!userWithCompany) {
       return null;
     }
-    const companyId = await prisma.company.findUnique({
-      where: {
-        firmanavn: companyName,
-      },
-    });
+    const companyQs = await db.collection('companies').where('firmanavn', '==', companyName).limit(1).get();
+    const companyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
     if (!companyId) {
       throw new Error("companyId is required");
     }
-    const reservation = await prisma.reservation.findMany({
-      where: {
-        companyId: companyId?.id,
-      },
-      include: {
-        user: true,
-      },
-    });
+    const qs = await db.collection('reservations').where('companyId', '==', companyId?.id).get();
+    const reservation = qs.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
 
     if (!reservation) {
       return null;

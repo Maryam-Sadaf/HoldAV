@@ -1,4 +1,4 @@
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 import getCurrentUser from "./getCurrentUser";
 
 interface IParams {
@@ -15,23 +15,12 @@ export default async function getRoomsByUserId(params: IParams) {
     if (!userId) {
       return;
     }
-    const rooms = await prisma.room.findMany({
-      where: {
-        userId: userId,
-      },
-      include: {
-        user: true,
-        company: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const safeRooms = rooms.map((room) => ({
+    const qs = await db.collection('rooms').where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+    const rooms = qs.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+    const safeRooms = rooms.map((room: any) => ({
       ...room,
-      createdAt: room.createdAt.toISOString(),
-      companyName: (room.company as any)?.[0]?.firmanavn,
+      createdAt: room.createdAt?.toDate ? room.createdAt.toDate().toISOString() : room.createdAt,
+      companyName: room.companyName,
     }));
 
     return safeRooms;

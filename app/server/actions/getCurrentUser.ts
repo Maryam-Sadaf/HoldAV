@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { unstable_cache } from "next/cache";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import prisma from "@/lib/prismaDB";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function getSession() {
   if (typeof window === "undefined") {
@@ -15,32 +15,22 @@ export async function getSession() {
 // Cache user data to avoid repeated DB queries
 const getCachedUser = unstable_cache(
   async (email: string) => {
-    const currentUser = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstname: true,
-        lastname: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        emailVerified: true,
-      },
-    });
-
-    if (!currentUser) {
-      return null;
-    }
-
+    const qs = await db.collection('users').where('email', '==', email).limit(1).get();
+    if (qs.empty) return null;
+    const doc = qs.docs[0];
+    const data = doc.data() as any;
+    const createdAt = data.createdAt instanceof Date ? data.createdAt : (data.createdAt?.toDate ? data.createdAt.toDate() : undefined);
+    const updatedAt = data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined);
     return {
-      ...currentUser,
-      createdAt: currentUser.createdAt.toISOString(),
-      updatedAt: currentUser.updatedAt.toISOString(),
-      emailVerified: currentUser.emailVerified || null,
-    };
+      id: doc.id,
+      email: data.email ?? null,
+      firstname: data.firstname ?? null,
+      lastname: data.lastname ?? null,
+      role: data.role ?? 'user',
+      createdAt: createdAt ? createdAt.toISOString() : undefined,
+      updatedAt: updatedAt ? updatedAt.toISOString() : undefined,
+      emailVerified: data.emailVerified ?? null,
+    } as any;
   },
   ['current-user'],
   {

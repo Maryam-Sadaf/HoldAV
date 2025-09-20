@@ -70,27 +70,33 @@ const InvitePageClient = ({
     submittingRef.current = true;
     if (!isLoading) setIsLoading(true);
     const company = companyName?.replace(/\s+/g, "-");
+    
+    // Show immediate feedback that the invitation is being processed
+    toast.loading("Sender invitasjon... Dette kan ta noen sekunder.", { id: "invite-loading" });
+    
     try {
-      await axios.post(`/api/invite`, {
+      const response = await axios.post(`/api/invite`, {
         email: data?.email,
         companyName: company,
         adminId: currentUser?.id,
         adminName: currentUser?.firstname,
       });
-
+      toast.dismiss("invite-loading");
       toast.success("Invitasjon sendt!", { id: "invite-success" });
 
       router.push(`/admin/${companyName}/${currentUser?.id}`);
       router.refresh();
     } catch (error: any) {
-      if (error.response.status === 400) {
+      toast.dismiss("invite-loading");
+      
+      if (error.response?.status === 400) {
         // Check if it's the "user already exists" error
         if (error.response.data === "User already exists, no need to invite.") {
           toast.error("Bruker eksisterer allerede, ingen invitasjon nødvendig", { id: "invite-error" });
         } else {
           toast.error("Ugyldig data motatt", { id: "invite-error" });
         }
-      } else if (error.response.status === 409) {
+      } else if (error.response?.status === 409) {
         toast.error("Bruker er allerede invitert", { id: "invite-error" });
       } else {
         toast.error("Det har oppstått en feil", { id: "invite-error" });
@@ -107,20 +113,11 @@ const InvitePageClient = ({
       e.stopPropagation();
       return;
     }
-    submittingRef.current = true;
-    setIsLoading(true);
+    // Let the form submit handler control submittingRef and loading
   };
 
   return (
-    <form
-      onSubmitCapture={(e) => {
-        if (submittingRef.current) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }}
-      onSubmit={handleSubmit(onSubmit)}
-    >
+    <form onSubmit={handleSubmit(onSubmit)}>
       <Width>
         <div className="mb-3">
           <Input
