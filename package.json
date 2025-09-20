@@ -49,7 +49,6 @@
     "google-auth-library": "^9.4.2",
     "googleapis": "^131.0.0",
     "lucide-react": "^0.309.0",
-    
     "net": "^1.0.2",
     "next": "^15.0.3",
     "next-auth": "^4.24.5",
@@ -76,7 +75,6 @@
     "@types/react-dom": "^18",
     "eslint-config-next": "^15.0.3",
     "postcss": "^8.5.6",
-    
     "tailwindcss": "^3.3.0"
   },
   "browser": {

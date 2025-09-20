@@ -577,10 +577,12 @@ const Scheduler = ({
                 scheduler.deleteEvent(id);
               } catch (_) {}
               // Show conflict-specific message if available
-              const isConflict = (error as any)?.response?.status === 409;
+              const isConflict = (error as any)?.response?.status === 400;
               setButtonStates(prev => ({ ...prev, save: 'error' }));
               if (isConflict) {
-                toast.error('Dette tidsrommet er allerede reservert.');
+                // Get the specific error message from the API response
+                const errorMessage = (error as any)?.response?.data?.error || 'This reservation slot is already booked';
+                toast.error(errorMessage);
               } else {
                 const msg = (error as any)?.message;
                 if (msg) {
