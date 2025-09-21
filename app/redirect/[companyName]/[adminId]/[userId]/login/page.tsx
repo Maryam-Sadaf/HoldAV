@@ -27,7 +27,7 @@ const Authentification = () => {
   const companyName = companyNameParams ? companyNameParams.companyName : null;
   const adminParams = useParams<{ adminId: string; item: string }>();
   const adminId = adminParams ? adminParams.adminId : null;
-  const invitationLink = `http://www.holdav.no/redirect/${companyName?.replace(
+  const invitationLink = `https://hold-av-zeta.vercel.app/redirect/${companyName?.replace(
     /\s+/g,
     "-"
   )}/${adminId}/${userId}/callback?token=${token}`;
