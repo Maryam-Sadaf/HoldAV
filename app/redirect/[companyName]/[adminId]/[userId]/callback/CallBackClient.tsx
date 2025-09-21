@@ -22,20 +22,27 @@ const CallBackClient = ({ currentUser }: CallBackClientProps) => {
   const searchParams = useSearchParams();
   const access_token = searchParams?.get("token");
   const [token, setToken] = useState<string | null>(null);
+  const [hasProcessed, setHasProcessed] = useState(false);
+  
   useEffect(() => {
     setToken(access_token!);
   }, [access_token]);
+  
   useEffect(() => {
+    if (hasProcessed) return; // Prevent multiple executions
+    
     if (access_token || companyName) {
       // For admin-join flow, the user is already registered and invited
       // We just need to redirect them to the homepage
       if (userId) {
+        setHasProcessed(true);
         router.push("/");
         toast.success("Ble med!");
         return;
       }
       
       // For user-join flow (existing users), call the user-join API
+      setHasProcessed(true);
       axios
         .post("/api/invite/user-join", { token, companyName, userId, adminId })
         .then((response) => {
@@ -53,7 +60,7 @@ const CallBackClient = ({ currentUser }: CallBackClientProps) => {
     } else {
       console.error("Mangler token");
     }
-  }, [access_token, companyName, userId, adminId, router, token]);
+  }, [access_token, companyName, userId, adminId, router, token, hasProcessed]);
   return (
     <EmptyState title="Blir med..." subTitle="Blir med... Vennligst vent" />
   );
