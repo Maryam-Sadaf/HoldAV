@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       adminName,
     } as any;
     await invitationRef.set(invitation);
-    const baseUrl = "http://localhost:3000";
+    const baseUrl = "https://hold-av-zeta.vercel.app/";
     
     // Validate required values for URL generation
     if (!companyName || !adminId) {
