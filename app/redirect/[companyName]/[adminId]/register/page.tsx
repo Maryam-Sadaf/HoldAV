@@ -28,10 +28,6 @@ const RegisterPage = () => {
   const adminParams = useParams<{ adminId: string; item: string }>();
   const adminId = adminParams ? adminParams.adminId : null;
 
-  const invitationLink = `https://hold-av-zeta.vercel.app/redirect/${companyName?.replace(
-    /\s+/g,
-    "-"
-  )}/${adminId}/callback?token=${token}`;
 
   const schema = z.object({
     firstname: z
@@ -86,7 +82,7 @@ const RegisterPage = () => {
 
     try {
       // Register new user with invitation
-      await axios.post("/api/invite/admin-join", {
+      const response = await axios.post("/api/invite/admin-join", {
         companyName: companyName,
         adminId: adminId,
         email: data.email,
@@ -95,6 +91,9 @@ const RegisterPage = () => {
         password: data.password,
         token: token, // Pass the invitation token
       });
+
+      // Get the userId from the response
+      const { userId: newUserId } = response.data;
 
       // After successful registration, sign in the user
       const signInResult = await signIn("credentials", {
@@ -105,7 +104,12 @@ const RegisterPage = () => {
 
       if (signInResult?.ok) {
         toast.success("Registrering vellykket!");
-        router.push(invitationLink);
+        // Use the correct callback URL with userId
+        const correctCallbackLink = `https://hold-av-zeta.vercel.app/redirect/${companyName?.replace(
+          /\s+/g,
+          "-"
+        )}/${adminId}/${newUserId}/callback?token=${token}`;
+        router.push(correctCallbackLink);
       } else {
         toast.error("Registrering vellykket, men innlogging feilet");
         router.push("/login");

@@ -27,6 +27,17 @@ const CallBackClient = ({ currentUser }: CallBackClientProps) => {
   }, [access_token]);
   useEffect(() => {
     if (access_token || companyName) {
+      // For admin-join flow, the user is already registered and invited
+      // We just need to redirect them to the admin page
+      if (userId) {
+        router.push(
+          `/admin/${companyName?.replace(/\s+/g, "-")}/${adminId}/rooms`
+        );
+        toast.success("Ble med!");
+        return;
+      }
+      
+      // For user-join flow (existing users), call the user-join API
       axios
         .post("/api/invite/user-join", { token, companyName, userId, adminId })
         .then((response) => {
