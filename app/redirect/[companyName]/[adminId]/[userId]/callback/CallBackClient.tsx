@@ -28,11 +28,9 @@ const CallBackClient = ({ currentUser }: CallBackClientProps) => {
   useEffect(() => {
     if (access_token || companyName) {
       // For admin-join flow, the user is already registered and invited
-      // We just need to redirect them to the admin page
+      // We just need to redirect them to the homepage
       if (userId) {
-        router.push(
-          `/admin/${companyName?.replace(/\s+/g, "-")}/${adminId}/rooms`
-        );
+        router.push("/");
         toast.success("Ble med!");
         return;
       }
@@ -42,9 +40,7 @@ const CallBackClient = ({ currentUser }: CallBackClientProps) => {
         .post("/api/invite/user-join", { token, companyName, userId, adminId })
         .then((response) => {
           console.log(response.data);
-          router.push(
-            `/admin/${companyName?.replace(/\s+/g, "-")}/${adminId}/rooms`
-          );
+          router.push("/");
           toast.success("Ble med!");
         })
         .catch((error) => {
