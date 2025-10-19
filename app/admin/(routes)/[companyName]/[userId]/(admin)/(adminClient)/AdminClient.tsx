@@ -8,7 +8,7 @@ import Updates from "@/components/Updates";
 //import { SafeReservations, SafeRoom, safeUser } from "@/types";
 import RoomsClient from "../rooms/RoomsClient";
 import EmptyState from "@/components/EmptyState";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 
@@ -34,6 +34,7 @@ const AdminClient = ({
   const [isAuthorized, setIsAuthorized] = useState(true);
   const params = useParams<{ userId: string; item: string }>();
   const userId = params ? params.userId : null;
+  const router = useRouter();
 
   const { data: authorizedUsers } = useQuery({
     queryKey: ["authorizedUsers"],
@@ -177,7 +178,25 @@ const AdminClient = ({
       <div className="relative w-full">
         <Width>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 ">
-            <div>
+            <div
+              onClick={() => {
+                const slugCompany = String(companyName ?? "").replace(/\s+/g, "-");
+                const uid = String(currentUser?.id ?? "");
+                const targetPath = `/admin/${slugCompany}/${uid}/reservasjoner`;
+                console.log("[AdminClient] Clicked Reservasjoner card", {
+                  companyName,
+                  currentUserId: currentUser?.id,
+                  targetPath,
+                });
+                if (!slugCompany || !uid) {
+                  console.error("[AdminClient] Missing params for navigation", { companyName, userId: currentUser?.id });
+                  return;
+                }
+                router.push(targetPath);
+              }}
+              className="cursor-pointer transition hover:opacity-90 relative"
+            >
+              <span className="absolute inset-0 z-[1]" />
               <Card
                 label="Reservasjoner"
                 number={reservationByCompanyName?.length || 0}
@@ -191,7 +210,25 @@ const AdminClient = ({
                 outline
               />
             </div>
-            <div>
+            <div
+              onClick={() => {
+                const slugCompany = String(companyName ?? "").replace(/\s+/g, "-");
+                const uid = String(currentUser?.id ?? "");
+                const targetPath = `/admin/${slugCompany}/${uid}/rooms`;
+                console.log("[AdminClient] Clicked Møterom card", {
+                  companyName,
+                  currentUserId: currentUser?.id,
+                  targetPath,
+                });
+                if (!slugCompany || !uid) {
+                  console.error("[AdminClient] Missing params for navigation", { companyName, userId: currentUser?.id });
+                  return;
+                }
+                router.push(targetPath);
+              }}
+              className="cursor-pointer transition hover:opacity-90 relative"
+            >
+              <span className="absolute inset-0 z-[1]" />
               <Card
                 label="Møterom"
                 number={roomsOfTheCurrentCompany?.length || 0}
