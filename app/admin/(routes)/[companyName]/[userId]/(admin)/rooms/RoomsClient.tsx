@@ -149,21 +149,36 @@ const RoomsClient = ({
       <Width>
         {roomsOfTheCurrentCompany?.length ? (
           <div>
-            {roomsOfTheCurrentCompany?.map((room: any) => (
-              <Link
-                href={`/${companyName
-                  ?.replace(/\s+/g, "-")
-                  .toLowerCase()}/${room?.name
-                  ?.replace(/\s+/g, "-")
-                  .toLowerCase()}`}
-                className="mb-2"
-                key={room?.id}
-              >
-                <div className="mb-3">
-                  <Card outline label={formatRoomNameForDisplay(room?.name)} flex icon={LuDoorOpen} />
+            {roomsOfTheCurrentCompany?.map((room: any) => {
+              const targetPath = `/${String(companyName ?? "")
+                .replace(/\s+/g, "-")
+                .toLowerCase()}/${String(room?.name ?? "")
+                .replace(/\s+/g, "-")
+                .toLowerCase()}`;
+              return (
+                <div
+                  key={room?.id}
+                  className="mb-2 relative z-10 pointer-events-auto cursor-pointer"
+                  role="link"
+                  tabIndex={0}
+                  onClickCapture={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(targetPath);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(targetPath);
+                    }
+                  }}
+                >
+                  <div className="mb-3">
+                    <Card outline label={formatRoomNameForDisplay(room?.name)} flex icon={LuDoorOpen} />
+                  </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
             {currentUser?.role === "admin" && (
               <div
                 className="mb-2"

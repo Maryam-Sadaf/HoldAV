@@ -11,6 +11,7 @@ import {
   MdScreenshotMonitor,
   MdMeetingRoom,
   MdAccountTree,
+  MdPeople,
   MdOutlineLogout,
 } from "react-icons/md";
 import { FaBuildingShield } from "react-icons/fa6";
@@ -74,11 +75,16 @@ const useRoutes = (currentUser: any) => {
             color: "text-light",
             href: "/infoskjerm",
           },
+          {
+        label: "All Users",
+        icon: MdPeople,
+        color: "text-light",
+        href: "/all-users",
+      },
         ]
       : []),
   ];
 };
-
 
 export const Constants = ({ currentUser }: SidebarProps) => {
   const routes = useRoutes(currentUser);
@@ -96,7 +102,8 @@ const Sidebar = ({ currentUser }: SidebarProps) => {
   const logout = async () => {
     await signOut({ callbackUrl: "/login" });
   };
-  {}
+  {
+  }
   const [navOpen, setNavOpen] = useState(false);
 
   const handleNav = () => {
@@ -107,7 +114,10 @@ const Sidebar = ({ currentUser }: SidebarProps) => {
   };
 
   return (
-    <div className="relative flex flex-col w-full h-full" suppressHydrationWarning>
+    <div
+      className="relative flex flex-col w-full h-full"
+      suppressHydrationWarning
+    >
       {!navOpen && (
         <div className="flex items-center justify-between w-full px-4 py-2 md:hidden bg-secondary">
           <div className="relative w-24 h-10 ">
@@ -122,9 +132,7 @@ const Sidebar = ({ currentUser }: SidebarProps) => {
 
       <div
         className={`${
-          navOpen
-            ? "fixed inset-0 z-50"
-            : "hidden md:flex"
+          navOpen ? "fixed inset-0 z-50" : "hidden md:flex"
         } flex flex-col w-full h-full py-4 space-y-4 text-white bg-secondary md:w-[250px] overflow-hidden`}
       >
         <div className="flex-1 px-3 py-2 overflow-y-auto">

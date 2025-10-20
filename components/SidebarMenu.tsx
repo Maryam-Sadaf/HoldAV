@@ -10,6 +10,7 @@ import {
   MdMeetingRoom,
   MdAccountTree,
   MdOutlineLogout,
+  MdPeople,
 } from "react-icons/md";
 import { FaBuildingShield } from "react-icons/fa6";
 import { FaUsers, FaUser } from "react-icons/fa";
@@ -37,6 +38,12 @@ const routes = [
     href: "/admin/booking",
     color: "text-violet-500",
   },
+  {
+        label: "All Users",
+        icon: MdPeople,
+        color: "text-light",
+        href: "/all-users",
+      },
   {
     label: "Infoskjerm",
     icon: MdScreenshotMonitor,
