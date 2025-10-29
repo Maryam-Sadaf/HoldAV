@@ -24,7 +24,8 @@ const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="fixed inset-y-0 left-0 z-50 w-full md:w-[250px] md:relative md:flex md:flex-col">
+      {/* <div className="w-full md:w-[250px] md:relative md:flex md:flex-col"> */}
+      <div className="fixed inset-y-0 left-0 z-50 w-full md:w-[250px] md:relative md:flex md:flex-col h-full">
         <Sidebar currentUser={currentUser} />
       </div>
       <main className="flex-1 overflow-auto px-3 py-10 md:py-20">

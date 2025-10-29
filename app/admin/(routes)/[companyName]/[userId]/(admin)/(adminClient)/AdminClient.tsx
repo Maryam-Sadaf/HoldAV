@@ -196,7 +196,8 @@ const AdminClient = ({
               }}
               className="cursor-pointer transition hover:opacity-90 relative"
             >
-              <span className="absolute inset-0 z-[1]" />
+             <span className="absolute inset-0 z-[1] pointer-events-none" />
+
               <Card
                 label="Reservasjoner"
                 number={reservationByCompanyName?.length || 0}
@@ -212,7 +213,8 @@ const AdminClient = ({
               }}
               className="cursor-pointer transition hover:opacity-90 relative"
             >
-              <span className="absolute inset-0 z-[1]" />
+<span className="absolute inset-0 z-[1] pointer-events-none" />
+
               <Card
                 label="Brukere"
                 number={authorizedUsers?.length || 0}
@@ -237,7 +239,8 @@ const AdminClient = ({
               }}
               className="cursor-pointer transition hover:opacity-90 relative"
             >
-              <span className="absolute inset-0 z-[1]" />
+             <span className="absolute inset-0 z-[1] pointer-events-none" />
+
               <Card
                 label="Møterom"
                 number={roomsOfTheCurrentCompany?.length || 0}
