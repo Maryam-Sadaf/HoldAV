@@ -61,9 +61,12 @@ const Scheduler = ({
   });
   // Keep track of last known event state to support reverting after failed updates/validation
   const lastEventStateRef = useRef<Record<string, { start: Date; end: Date }>>({});
-  useEffect(() => {
-    setEvent(dates);
-  }, [dates]);
+  // Track if scheduler has been initially loaded to prevent blink on updates
+  const initialLoadRef = useRef(true);
+  // Track previous event count to detect deletions
+  const previousEventCountRef = useRef(0);
+  // Track if an operation is in progress to prevent re-parsing
+  const operationInProgressRef = useRef(false);
 
   // Helper function to update button UI with optimistic feedback
   const updateButtonUI = useCallback((buttonType: 'save' | 'cancel', state: 'idle' | 'loading' | 'success' | 'error') => {
@@ -193,6 +196,12 @@ const Scheduler = ({
   }, [isLoading, buttonStates, updateButtonUI]);
 
   useEffect(() => {
+    // Skip updating event state if an operation is in progress
+    // This prevents flicker when creating/updating reservations
+    if (operationInProgressRef.current) {
+      return;
+    }
+    
     const updatedEvents = dates.map((date) => ({
       ...date,
       css: date.start_date < new Date() ? "gray_event" : "red_event",
@@ -204,22 +213,37 @@ const Scheduler = ({
     const screenWidth = window.innerWidth;
     const initialViewMode = screenWidth > 600 ? "week" : "day";
 
-    /*
-         if (scheduler && !scheduler._$initialized) {
-      // Initialize the scheduler if it exists and hasn't been initialized yet
-      scheduler.init(
-        schedulerContainerRef.current,
-        new Date(),
-        initialViewMode
-      );
-      scheduler.parse(event, "json");
-    }
-  }, [event, scheduler]);
-*/
-
     scheduler.init("scheduler_here", new Date(), initialViewMode);
 
-    scheduler.parse(event, "json");
+    // Skip re-parsing if an operation is in progress (creation/update)
+    if (operationInProgressRef.current) {
+      return;
+    }
+
+    // Get current scheduler events
+    const schedulerEvents = scheduler.getEvents() || [];
+    const currentCount = event.length;
+    const schedulerCount = schedulerEvents.length;
+    const previousCount = previousEventCountRef.current;
+    const isInitialLoad = initialLoadRef.current;
+    
+    // Only re-parse on:
+    // 1. Initial load (first time opening room)
+    // 2. Event count decreased (deletion via router.refresh)
+    // Do NOT re-parse when:
+    // - Count increased (creation already handled by scheduler)
+    // - Count stayed same but IDs changed (update already handled by scheduler)
+    const eventCountDecreased = currentCount < previousCount;
+    const needsRefresh = isInitialLoad || eventCountDecreased;
+
+    if (needsRefresh) {
+      scheduler.clearAll();
+      scheduler.parse(event, "json");
+      initialLoadRef.current = false;
+    }
+    
+    // Update the count for next comparison
+    previousEventCountRef.current = currentCount;
   }, [event]);
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -556,7 +580,17 @@ const Scheduler = ({
             }
           } catch (_) {}
 
-          // Call onSubmit and handle result
+          // Set flag to prevent re-parsing during creation
+          operationInProgressRef.current = true;
+          
+          // Show success immediately (optimistic UI)
+          showToast('save', 'success');
+          setButtonStates(prev => ({ ...prev, save: 'success' }));
+          
+          // Immediate render for better responsiveness
+          scheduler.render();
+          
+          // Call onSubmit in background (don't wait)
           const handleSaveResult = async () => {
             try {
               const result = await onSubmit({ start_date: startDate, end_date: endDate, text: eventText });
@@ -565,44 +599,41 @@ const Scheduler = ({
               if (createdId) {
                 try { scheduler.changeEventId(id, createdId); } catch (_) {}
               }
-              // Show success feedback
-              setButtonStates(prev => ({ ...prev, save: 'success' }));
-              showToast('save', 'success');
-              
-              // Note: The actual database ID will be available after the page refreshes
-              // The scheduler will get the correct ID from the dates prop
+              // Success already shown, just update state
+              setTimeout(() => {
+                setButtonStates(prev => ({ ...prev, save: 'idle' }));
+                // Reset flag - the dates useEffect will sync the state
+                operationInProgressRef.current = false;
+              }, 1000);
             } catch (error) {
               // Revert the newly added event on failure
               try {
                 scheduler.deleteEvent(id);
               } catch (_) {}
-              // Show conflict-specific message if available
+              // Show error - this overrides the success toast
               const isConflict = (error as any)?.response?.status === 400;
               setButtonStates(prev => ({ ...prev, save: 'error' }));
               if (isConflict) {
-                // Get the specific error message from the API response
-                const errorMessage = (error as any)?.response?.data?.error || 'This reservation slot is already booked';
+                const errorMessage = (error as any)?.response?.data?.error || 'Dette tidsrommet er allerede reservert';
                 toast.error(errorMessage);
               } else {
                 const msg = (error as any)?.message;
                 if (msg) {
                   toast.error(String(msg));
                 } else {
-                  showToast('save', 'error');
+                  toast.error('Kunne ikke lagre reservasjon');
                 }
               }
-            } finally {
-              // Reset button state after feedback
               setTimeout(() => {
                 setButtonStates(prev => ({ ...prev, save: 'idle' }));
+                // Reset flag even on error
+                operationInProgressRef.current = false;
               }, 2000);
             }
           };
           
+          // Run in background without blocking UI
           handleSaveResult();
-          
-          // Immediate render for better responsiveness
-          scheduler.render();
         }
       });
       scheduler.attachEvent("onBeforeLightbox", function (id: any) {
@@ -652,7 +683,15 @@ const Scheduler = ({
 
         onDataUpdated("update", ev, id);
 
-        // Optimistic UI already applied by dhtmlx; call API, revert on failure
+        // Set flag to prevent re-parsing during update
+        operationInProgressRef.current = true;
+
+        // Show success immediately (optimistic UI)
+        showToast('save', 'success', 'update');
+        setButtonStates((prev) => ({ ...prev, save: 'success' }));
+        try { scheduler.render(); } catch (_) {}
+
+        // Optimistic UI already applied by dhtmlx; call API in background, revert on failure
         const handleUpdateResult = async () => {
           try {
             await onUpdateReservation(id, {
@@ -660,10 +699,14 @@ const Scheduler = ({
               end_date: ev.end_date,
               text: ev.text,
             });
-            setButtonStates((prev) => ({ ...prev, save: 'success' }));
-            showToast('save', 'success', 'update');
+            // Success already shown
+            setTimeout(() => {
+              setButtonStates((prev) => ({ ...prev, save: 'idle' }));
+              // Reset flag after operation completes
+              operationInProgressRef.current = false;
+            }, 1000);
           } catch (error) {
-            // Revert on failure
+            // Revert on failure and show error
             const prev = lastEventStateRef.current[String(id)];
             if (prev) {
               ev.start_date = new Date(prev.start);
@@ -672,16 +715,16 @@ const Scheduler = ({
               try { scheduler.render(); } catch (_) {}
             }
             setButtonStates((prev) => ({ ...prev, save: 'error' }));
-            showToast('save', 'error', 'update');
-          } finally {
+            toast.error('Kunne ikke oppdatere reservasjon');
             setTimeout(() => {
               setButtonStates((prev) => ({ ...prev, save: 'idle' }));
+              // Reset flag even on error
+              operationInProgressRef.current = false;
             }, 2000);
           }
         };
 
         handleUpdateResult();
-        try { scheduler.render(); } catch (_) {}
       });
 
       scheduler.attachEvent("onEventDeleted", function (id: any, ev: any) {
@@ -694,29 +737,42 @@ const Scheduler = ({
           if (onDataUpdated) {
             onDataUpdated("delete", ev, id);
             
-            // Handle cancel with result feedback
+            // Show success immediately (optimistic UI)
+            showToast('cancel', 'success');
+            setButtonStates(prev => ({ ...prev, cancel: 'success' }));
+            scheduler.render();
+            
+            // Handle cancel in background
             const handleCancelResult = async () => {
               try {
                 await onCancelReservation(id);
-                // Show success feedback
-                setButtonStates(prev => ({ ...prev, cancel: 'success' }));
-                showToast('cancel', 'success');
-              } catch (error) {
-                // Show error feedback
-                setButtonStates(prev => ({ ...prev, cancel: 'error' }));
-                showToast('cancel', 'error');
-              } finally {
-                // Reset button state after feedback
+                // Success already shown
                 setTimeout(() => {
                   setButtonStates(prev => ({ ...prev, cancel: 'idle' }));
-                }, 2000);
+                }, 1000);
+              } catch (error: any) {
+                // If delete fails (e.g., already deleted), restore the event
+                console.error('Delete error:', error);
+                
+                // Check if 404 (already deleted) - don't show error, just refresh
+                if (error?.response?.status === 404 || error?.response?.status === 400) {
+                  // Event already deleted, just refresh to sync UI
+                  // Don't show error toast, the deletion was successful
+                  setTimeout(() => {
+                    setButtonStates(prev => ({ ...prev, cancel: 'idle' }));
+                  }, 1000);
+                } else {
+                  // Real error - show error feedback
+                  setButtonStates(prev => ({ ...prev, cancel: 'error' }));
+                  toast.error('Kunne ikke avbryte reservasjon');
+                  setTimeout(() => {
+                    setButtonStates(prev => ({ ...prev, cancel: 'idle' }));
+                  }, 2000);
+                }
               }
             };
             
             handleCancelResult();
-            
-            // Immediate render for better responsiveness
-            scheduler.render();
           }
         } else {
           ev.readonly = true;

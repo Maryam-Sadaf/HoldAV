@@ -20,7 +20,7 @@ const getCachedRooms = unstable_cache(
   },
   ['rooms-by-company'],
   {
-    revalidate: 60, // Cache for 60 seconds
+    revalidate: 1, // Cache for only 1 second to ensure fresh data
     tags: ['rooms']
   }
 );

@@ -33,8 +33,18 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
     },
     onMutate: async (id: string) => {
       setIsLoading(true);
+      
+      // Show success notification FIRST
+      if (!hasToasted) {
+        toast.success("Reservasjon kansellert");
+        setHasToasted(true);
+      }
+      
       await queryClient.cancelQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
       const previous = queryClient.getQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false });
+
+      // Delay the optimistic removal slightly so toast appears first
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       const removeFromData = (old: any) => {
         if (!old) return old;
@@ -64,12 +74,11 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
     onSuccess: (data: any, id: string, context: any) => {
       const count = typeof data?.count === 'number' ? data.count : (typeof data?.deletedCount === 'number' ? data.deletedCount : 0);
       if (count > 0) {
-        if (!hasToasted) {
-          toast.success("Reservasjon kansellert");
-          setHasToasted(true);
-        }
+        // Toast already shown in onMutate
         setIsDeleted(true);
         queryClient.invalidateQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
+        // Refresh server-side data to ensure deleted reservation doesn't reappear
+        router.refresh();
       } else {
         // rollback optimistic removal if server did not delete
         if (context?.previous) {
@@ -80,13 +89,23 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
         toast.error("Reservasjon finnes ikke eller er allerede kansellert");
       }
     },
-    onError: (_err, _id, context: any) => {
-      if (context?.previous) {
-        for (const [queryKey, data] of context.previous) {
-          queryClient.setQueryData(queryKey, data);
+    onError: (err: any, _id, context: any) => {
+      // Check if it's a 404 (already deleted) - don't restore, just refresh
+      if (err?.response?.status === 404 || err?.response?.status === 400) {
+        // Already deleted - keep the success message, just sync UI
+        setIsDeleted(true);
+        router.refresh();
+      } else {
+        // Real error - restore the optimistic update and show error
+        if (context?.previous) {
+          for (const [queryKey, data] of context.previous) {
+            queryClient.setQueryData(queryKey, data);
+          }
         }
+        // Dismiss any previous toasts and show error
+        toast.dismiss();
+        toast.error("Kunne ikke kansellere reservasjon");
       }
-      toast.error("Noe gikk galt..");
     },
     onSettled: () => {
       setIsLoading(false);
@@ -117,7 +136,7 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
 
   return (
     <div className="w-full col-span-1 py-3 group">
-      <div className="flex flex-col w-full gap-2 p-6 border rounded-md bg-light/10 border-primary">
+      <div className="flex flex-col w-full gap-2 p-6 border rounded-md  border-primary">
         {/*
         <div className="relative w-full overflow-hidden aspect-square rounded-xl">
           <Image

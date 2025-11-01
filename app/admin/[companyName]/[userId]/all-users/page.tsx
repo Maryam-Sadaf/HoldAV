@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-
+import Heading from "@/components/Heading";
+import Container from "@/components/Container";
 type UserRow = {
   fullName: string | null;
   email: string | null;
@@ -59,8 +60,10 @@ const AllUsersPage = () => {
   }
 
   return (
+    <Container>
     <div className="p-6">
-      <div className="overflow-x-auto">
+       <Heading title="All Users" subTitle="View and manage all registered users from this section." />
+      <div className="overflow-x-auto ">
         <table className="min-w-full divide-y divide-gray-200 border rounded-lg">
           <thead className="bg-gray-50">
             <tr>
@@ -87,6 +90,8 @@ const AllUsersPage = () => {
         </table>
       </div>
     </div>
+    </Container>
+
   );
 };
 

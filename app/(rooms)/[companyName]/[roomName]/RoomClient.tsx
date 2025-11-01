@@ -61,6 +61,7 @@ const Reservation = ({
   const routeParams = useParams<{ companyName: string; roomName: string }>();
   const companyName = routeParams ? routeParams.companyName : null;
   const roomNameParam = routeParams ? routeParams.roomName : null;
+  
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
@@ -79,8 +80,47 @@ const Reservation = ({
   }, [authorizedUsers, currentUser]);
 
   useEffect(() => {
-    setDates(reservationsByRomName);
-  }, [reservationsByRomName]);
+    const source = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
+    
+    if (source.length === 0) {
+      setDates([]);
+      return;
+    }
+
+    const currentRoomId = roomByName?.id ? String(roomByName.id).trim() : null;
+    const currentRoomNameLc = (roomByName?.name || "").toString().trim().toLowerCase();
+    const routeRoomNameLc = (roomNameParam || "").toString().trim().toLowerCase();
+
+    if (!currentRoomId && !currentRoomNameLc && !routeRoomNameLc) {
+      setDates([]);
+      return;
+    }
+
+    const filtered = source.filter((r: any) => {
+      const rid = r?.roomId ? String(r.roomId).trim() : null;
+      const rnameLc = (r?.roomName || "").toString().trim().toLowerCase();
+      
+      if (currentRoomId && rid && rid === currentRoomId) {
+        return true;
+      }
+      
+      if (currentRoomNameLc && rnameLc && rnameLc === currentRoomNameLc) {
+        return true;
+      }
+      
+      if (routeRoomNameLc && rnameLc) {
+        const normalizedRoute = routeRoomNameLc.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+        const normalizedReservation = rnameLc.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+        if (normalizedReservation === normalizedRoute) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    setDates(filtered);
+  }, [reservationsByRomName, roomByName?.id, roomByName?.name, roomNameParam]);
   const addMessage = (message: any) => {
     const maxLogLength = 5;
     const newMessage = { message };
@@ -146,10 +186,10 @@ const Reservation = ({
       const response = await axios.post("/api/reservation", requestData);
       // Return the created reservation id so Scheduler can swap temp id
       const createdId = response?.data?.reservations?.[0]?.id || response?.data?.id;
+      setIsReservation(false);
       return { id: createdId };
       // Toast is now handled by Scheduler component
-      //router.push(`/${companyName}/reservasjoner`);
-      setIsReservation(false);
+      // Scheduler already handles the UI update, no refresh needed to avoid blink
     } catch (error) {
       console.error("Feil ved reservering:", error);
       // Re-throw error so Scheduler component can handle it
@@ -162,7 +202,6 @@ const Reservation = ({
     formData,
     roomByName,
     companyName,
-    //router,
     setIsReservation,
     //creatorByCompanyName?.userId,
   ]);

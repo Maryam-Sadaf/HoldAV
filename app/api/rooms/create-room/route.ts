@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       companyId: company.id,
       name: formattedRoomName,
       createdAt: now,
-      companyName: decodedSpaceCompanyName || providedCompanyName || convertedCompanyName,
+      companyName: company.firmanavn, // Use actual company name from database
     } as any;
     await roomRef.set(createRoom);
 

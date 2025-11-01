@@ -31,7 +31,7 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
   const getRoomsForC = async () => {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_URL}/api/rooms/company/${companyName}`,
-      { next: { revalidate: 300 } }
+      { cache: 'no-store' }
     );
     if (!res.ok) {
       // This will activate the closest `error.js` Error Boundary

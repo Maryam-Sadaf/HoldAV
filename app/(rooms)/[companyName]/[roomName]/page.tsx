@@ -13,6 +13,9 @@ import { getUsersByCompanyId } from "@/app/server/actions/getUsersByCompanyId";
 import { getCreatorByCompanyName } from "@/app/server/actions/getCreatorOfTheCompany";
 import RoomPageSkeleton from "@/components/loading/RoomPageSkeleton";
 
+// Force dynamic rendering to prevent caching issues when navigating between rooms
+export const dynamic = 'force-dynamic';
+
 interface IParams {
   roomId?: string;
   roomName?: string;
@@ -58,6 +61,7 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
       <Suspense fallback={<RoomPageSkeleton />}>
         <div className="relative w-full ">
           <RoomClient
+            key={`${companyName}-${roomName}`}
             currentUser={currentUser}
             roomByName={roomByName}
             reservationsByRomName={reservationsByRomName}

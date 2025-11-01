@@ -25,11 +25,9 @@ export async function GET(
     
     const response = NextResponse.json(roomsForCompany);
     
-    // Performance: Enhanced caching headers
-    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600, max-age=60');
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300');
+    // Allow revalidation to ensure fresh data after room creation/deletion
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate');
     response.headers.set('Vary', 'Accept-Encoding');
-    response.headers.set('ETag', `"${JSON.stringify(roomsForCompany).length}-${Date.now()}"`);
     
     return response;
   } catch (error) {

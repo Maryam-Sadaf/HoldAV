@@ -20,11 +20,13 @@ const RoomButton = ({ room, href }: RoomButtonProps) => {
   return (
     <Link
       href={href}
-      className="mx-auto mb-2"
+      className="mx-auto mb-2 block touch-manipulation"
       onClick={handleClick}
+      onTouchStart={handleClick}
       prefetch={true}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <div className="relative flex justify-center items-center px-4 py-2 font-bold text-center uppercase border-2 rounded text-primary border-primary hover:bg-primary hover:text-white transition-all duration-200 min-h-[44px] min-w-[140px]">
+      <div className="relative flex justify-center items-center px-4 py-2 font-bold text-center uppercase border-2 rounded text-primary border-primary hover:bg-primary hover:text-white active:bg-primary active:text-white transition-all duration-200 min-h-[44px] min-w-[140px] cursor-pointer">
         {isLoading ? (
           <>
             <LoadingSpinner size="sm" className="mr-2" />

@@ -64,27 +64,18 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
           companyName: companyName,
         });
 
-        // Optimistically append the new room to the rooms list cache
-        try {
-          const createdRoom = response?.data;
-          // Also pass data across navigation for immediate paint on next page
-          if (typeof window !== 'undefined') {
-            try { sessionStorage.setItem('just-created-room', JSON.stringify(createdRoom)); } catch (_) {}
-          }
-          queryClient.setQueryData(["roomsForCompany"], (old: any) => {
-            if (Array.isArray(old)) {
-              return [...old, createdRoom];
-            }
-            return [createdRoom];
-          });
-        } catch (_) {}
+        // Invalidate the rooms query to trigger a fresh fetch
+        await queryClient.invalidateQueries({ queryKey: ["roomsForCompany"] });
 
         toast.success("Møterom Opprettet");
 
+        // Navigate to rooms page
         router.push(
           `/admin/${companyName?.replace(/\s+/g, "-")}/${currentUser?.id}/rooms`
         );
-        // No full refresh required; list is already updated via cache
+        
+        // Refresh to ensure server-side data is also updated
+        router.refresh();
       } else {
         toast.error("Ugyldig navn");
       }

@@ -49,22 +49,9 @@ const RoomsClient = ({
       const res = await axios.get(`/api/rooms/company/${companyName}`);
       return res.data;
     },
-    // Remove initialData to prevent stale data from flashing
-    // This ensures we wait for fresh API response before rendering
+    initialData: roomsOfTheCurrentCompanyInit,
     refetchOnMount: true,
   });
-
-  // Clean up sessionStorage after successful load to prevent stale data
-  useEffect(() => {
-    if (roomsOfTheCurrentCompany && !roomsLoading) {
-      // Clear the just-created-room flag once we have fresh data
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.removeItem('just-created-room');
-        } catch (_) {}
-      }
-    }
-  }, [roomsOfTheCurrentCompany, roomsLoading]);
   const { data: company, isLoading: companyLoading } = useQuery({
     queryKey: ["company"],
     queryFn: async () => {
@@ -158,21 +145,12 @@ const RoomsClient = ({
               return (
                 <div
                   key={room?.id}
-                  className="mb-2 relative z-10 pointer-events-auto cursor-pointer"
-                  role="link"
-                  tabIndex={0}
-                  onClickCapture={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                  onClick={() => {
                     router.push(targetPath);
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(targetPath);
-                    }
-                  }}
+                  className="mb-2 cursor-pointer transition hover:opacity-90 relative"
                 >
+                  <span className="absolute inset-0 z-[1]" />
                   <div className="mb-3">
                     <Card outline label={formatRoomNameForDisplay(room?.name)} flex icon={LuDoorOpen} />
                   </div>
@@ -181,13 +159,14 @@ const RoomsClient = ({
             })}
             {currentUser?.role === "admin" && (
               <div
-                className="mb-2"
                 onClick={() =>
                   router.push(
                     `/admin/${companyName}/${currentUser?.id}/rooms/slug`
                   )
                 }
+                className="mb-2 cursor-pointer transition hover:opacity-90 relative"
               >
+                <span className="absolute inset-0 z-[1]" />
                 <Card
                   outline
                   label="Legg til møterom"
