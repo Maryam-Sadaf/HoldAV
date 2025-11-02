@@ -38,7 +38,12 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
     getReservationsByRoomName({ roomName: roomName }),
     getCreatorByCompanyName({ companyName: companyName })
   ]);
-  //console.log("🚀 ~ Rooms ~ creatorByCompanyName:", creatorByCompanyName);
+  
+  // Note: roomId query requires Firestore index - skipping for now
+  // roomName query is working and returning reservations
+  
+  // Use reservations from roomName query (already working)
+  const uniqueReservations = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
 
   if (!currentUser) {
     return (
@@ -64,7 +69,7 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
             key={`${companyName}-${roomName}`}
             currentUser={currentUser}
             roomByName={roomByName}
-            reservationsByRomName={reservationsByRomName}
+            reservationsByRomName={uniqueReservations}
             authorizedUsers={authorizedUsers}
           />
         </div>

@@ -23,19 +23,32 @@ export default async function getReservationsByRoomName(params: IParams) {
     // URL: "meeting-room-b" -> Room name: "Meeting Room B"
     const convertedRoomName = roomName ? slugToRoomName(roomName) : undefined;
 
-    // OPTIMIZED: Single query with OR condition instead of 3 separate queries
-    // Firestore cannot OR query across same field without composite index workaround.
-    // Make three queries and merge results.
-    const [qs1, qs2, qs3] = await Promise.all([
-      db.collection('reservations').where('roomName', '==', convertedRoomName).orderBy('createdAt', 'desc').limit(100).get(),
-      db.collection('reservations').where('roomName', '==', roomName).orderBy('createdAt', 'desc').limit(100).get(),
-      db.collection('reservations').where('roomName', '==', roomName.toLowerCase()).orderBy('createdAt', 'desc').limit(100).get(),
-    ]);
+    // Try multiple room name variations to handle different formats
+    // Firestore is case-sensitive, so we need to check all possible formats
+    const roomNameVariations = [
+      convertedRoomName,                    // "meet123" -> "Meet123"
+      roomName,                             // "meet123" (original)
+      roomName.toLowerCase(),               // "meet123"
+      roomName.toUpperCase(),               // "MEET123"
+      roomName.charAt(0).toUpperCase() + roomName.slice(1).toLowerCase(), // "Meet123"
+    ].filter((v, i, arr) => v && arr.indexOf(v) === i); // Remove duplicates
+
+    console.log("🔍 getReservationsByRoomName - Searching with variations:", roomNameVariations);
+
+    // Query all variations and merge results
+    const queryPromises = roomNameVariations.map((name) =>
+      db.collection('reservations').where('roomName', '==', name).orderBy('createdAt', 'desc').limit(100).get()
+    );
+    
+    const queryResults = await Promise.all(queryPromises);
     const map = new Map<string, any>();
-    for (const qs of [qs1, qs2, qs3]) {
+    
+    for (const qs of queryResults) {
       qs.docs.forEach((d) => map.set(d.id, { id: d.id, ...d.data() }));
     }
+    
     const reservations = Array.from(map.values());
+    console.log("🔍 getReservationsByRoomName - Found reservations:", reservations.length);
 
     // Normalize Firestore Timestamps to ISO strings for client safety
     return reservations.map((reservation: any) => {

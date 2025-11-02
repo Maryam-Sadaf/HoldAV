@@ -13,6 +13,7 @@ import Image from "next/image";
 import { metting } from "@/assets";
 import ContentLoader from "@/components/ContentLoader";
 import dynamic from "next/dynamic";
+import "./Scheduler.css";
 
 interface Message {
   message: any;
@@ -43,6 +44,9 @@ const Reservation = ({
     end_date: "",
   });
   const [dates, setDates] = useState<Dates[]>([]);
+  const [reservationsState, setReservationsState] = useState<any[]>(
+    Array.isArray(reservationsByRomName) ? reservationsByRomName : []
+  );
   const selectedDatesRef = useRef({ start_date: "", end_date: "" });
 
   const [formData, setFormData] = useState({
@@ -80,7 +84,13 @@ const Reservation = ({
   }, [authorizedUsers, currentUser]);
 
   useEffect(() => {
-    const source = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
+    setReservationsState(
+      Array.isArray(reservationsByRomName) ? reservationsByRomName : []
+    );
+  }, [reservationsByRomName]);
+
+  useEffect(() => {
+    const source = Array.isArray(reservationsState) ? reservationsState : [];
     
     if (source.length === 0) {
       setDates([]);
@@ -92,25 +102,38 @@ const Reservation = ({
     const routeRoomNameLc = (roomNameParam || "").toString().trim().toLowerCase();
 
     if (!currentRoomId && !currentRoomNameLc && !routeRoomNameLc) {
-      setDates([]);
+      // If no identifiers, show all (shouldn't happen but fallback)
+      setDates(source.map((r: any) => ({
+        id: r.id,
+        start_date: new Date(r.start_date),
+        end_date: new Date(r.end_date),
+        text: r.text || "",
+      })));
       return;
     }
 
     const filtered = source.filter((r: any) => {
       const rid = r?.roomId ? String(r.roomId).trim() : null;
-      const rnameLc = (r?.roomName || "").toString().trim().toLowerCase();
+      const rname = (r?.roomName || "").toString().trim();
+      const rnameLc = rname.toLowerCase();
       
+      // Match by roomId first (most reliable)
       if (currentRoomId && rid && rid === currentRoomId) {
         return true;
       }
       
+      // Match by room name (exact lowercase match)
       if (currentRoomNameLc && rnameLc && rnameLc === currentRoomNameLc) {
         return true;
       }
       
+      // Match by route room name (normalized comparison)
       if (routeRoomNameLc && rnameLc) {
-        const normalizedRoute = routeRoomNameLc.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-        const normalizedReservation = rnameLc.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+        // Normalize both: remove hyphens, normalize spaces, lowercase
+        const normalize = (str: string) => str.replace(/-/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+        const normalizedRoute = normalize(routeRoomNameLc);
+        const normalizedReservation = normalize(rname);
+        
         if (normalizedReservation === normalizedRoute) {
           return true;
         }
@@ -119,8 +142,16 @@ const Reservation = ({
       return false;
     });
     
-    setDates(filtered);
-  }, [reservationsByRomName, roomByName?.id, roomByName?.name, roomNameParam]);
+    // Convert to dates format
+    const datesArray = filtered.map((r: any) => ({
+      id: r.id,
+      start_date: new Date(r.start_date),
+      end_date: new Date(r.end_date),
+      text: r.text || "",
+    }));
+    
+    setDates(datesArray);
+  }, [reservationsState, roomByName?.id, roomByName?.name, roomNameParam]);
   const addMessage = (message: any) => {
     const maxLogLength = 5;
     const newMessage = { message };
@@ -187,9 +218,29 @@ const Reservation = ({
       // Return the created reservation id so Scheduler can swap temp id
       const createdId = response?.data?.reservations?.[0]?.id || response?.data?.id;
       setIsReservation(false);
+      
+      // Update reservations state with the newly created reservation
+      if (createdId) {
+        const createdReservation = response?.data?.reservations?.[0];
+        if (createdReservation) {
+          setReservationsState((prev) => [...prev, createdReservation]);
+        } else {
+          setReservationsState((prev) => [
+            ...prev,
+            {
+              id: createdId,
+              roomId: ensuredRoomId,
+              roomName: ensuredRoomName,
+              start_date: requestData.start_date,
+              end_date: requestData.end_date,
+              text: requestData.text,
+            },
+          ]);
+        }
+      }
+      
       return { id: createdId };
       // Toast is now handled by Scheduler component
-      // Scheduler already handles the UI update, no refresh needed to avoid blink
     } catch (error) {
       console.error("Feil ved reservering:", error);
       // Re-throw error so Scheduler component can handle it
@@ -202,6 +253,7 @@ const Reservation = ({
     formData,
     roomByName,
     companyName,
+    roomNameParam,
     setIsReservation,
     //creatorByCompanyName?.userId,
   ]);
@@ -218,16 +270,16 @@ const Reservation = ({
         end_date: formattedEndDate,
       });
       // Optimistically update local state so Scheduler reflects changes immediately
-      setDates((prev) =>
-        prev.map((evt) =>
-          String(evt.id) === String(id)
+      setReservationsState((prev) =>
+        prev.map((reservation: any) =>
+          String(reservation.id) === String(id)
             ? {
-                ...evt,
-                start_date: new Date(updatedData.start_date),
-                end_date: new Date(updatedData.end_date),
-                text: updatedData.text ?? evt.text,
+                ...reservation,
+                start_date: formattedStartDate,
+                end_date: formattedEndDate,
+                text: updatedData.text ?? reservation.text,
               }
-            : evt
+            : reservation
         )
       );
       // No toast here; Scheduler shows feedback already
@@ -242,8 +294,13 @@ const Reservation = ({
     try {
       setIsLoading(true);
       await axios.delete(`/api/reservation/${id}`);
+      
+      // Update reservations state by removing the deleted reservation
+      setReservationsState((prev) =>
+        prev.filter((reservation: any) => String(reservation.id) !== String(id))
+      );
+      
       // Toast is now handled by Scheduler component
-      router.refresh();
     } catch (error: any) {
       // Re-throw error so Scheduler component can handle it
       throw error;
@@ -294,14 +351,14 @@ const Reservation = ({
   }
 
   return (
-    <div className="w-full h-full min-h-screen">
+    <div className="w-full min-h-[600px] md:h-full md:min-h-screen">
       <div className="hidden tool-bar">
         <Toolbar
           timeFormatState={currentTimeFormatState}
           onTimeFormatStateChange={handleTimeFormatStateChange}
         />
       </div>
-      <div className="scheduler_container">
+      <div className="scheduler_container overflow-auto">
         <DynamicScheduler
           dates={dates}
           timeFormatState={currentTimeFormatState}

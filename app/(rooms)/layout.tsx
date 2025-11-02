@@ -22,15 +22,12 @@ const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="fixed inset-y-0 left-0 z-50 w-full md:w-[250px] md:relative md:flex md:flex-col">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+      <div className="w-full md:w-[250px] md:relative md:flex md:flex-col shrink-0">
         <Sidebar currentUser={currentUser} />
       </div>
       <main className="flex-1 overflow-auto px-2 py-4 md:px-0 md:py-10">
         {/*<Navbar user currentUser={currentUser} />*/}
-        <p className="md:hidden">
-          Ikke optimalisert for mobil enda.. kommer snart
-        </p>
         {children}
       </main>
     </div>

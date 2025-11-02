@@ -61,9 +61,12 @@ const Scheduler = ({
   });
   // Keep track of last known event state to support reverting after failed updates/validation
   const lastEventStateRef = useRef<Record<string, { start: Date; end: Date }>>({});
-  useEffect(() => {
-    setEvent(dates);
-  }, [dates]);
+  // Track if scheduler has been initially loaded to prevent blink on updates
+  const initialLoadRef = useRef(true);
+  // Track previous event count to detect deletions
+  const previousEventCountRef = useRef(0);
+  // Track if an operation is in progress to prevent re-parsing
+  const operationInProgressRef = useRef(false);
 
   // Helper function to update button UI with optimistic feedback
   const updateButtonUI = useCallback((buttonType: 'save' | 'cancel', state: 'idle' | 'loading' | 'success' | 'error') => {
@@ -193,45 +196,151 @@ const Scheduler = ({
   }, [isLoading, buttonStates, updateButtonUI]);
 
   useEffect(() => {
+    // Always update event state when dates prop changes
+    // The scheduler will handle duplicate prevention
     const updatedEvents = dates.map((date) => ({
       ...date,
       css: date.start_date < new Date() ? "gray_event" : "red_event",
     }));
+    
+    // Check if we have new events that aren't in scheduler yet
+    const schedulerEvents = scheduler.getEvents() || [];
+    const schedulerIds = new Set(schedulerEvents.map((e: any) => String(e.id)));
+    const newEventIds = new Set(updatedEvents.map((e: any) => String(e.id)));
+    
+    // Count events in scheduler vs props
+    const hasNewEvents = updatedEvents.length > schedulerEvents.length;
+    const hasMissingEvents = [...newEventIds].some((id) => !schedulerIds.has(String(id)));
+    
+    // If operation is in progress but we have new events from server, still update
+    // This handles the case where router.refresh() brings new data
+    if (operationInProgressRef.current && !hasNewEvents && !hasMissingEvents) {
+      // Skip only if no new events are detected
+      return;
+    }
+    
     setEvent(updatedEvents);
   }, [dates]);
 
+  // Initialize scheduler only once
+  const schedulerInitializedRef = useRef(false);
+  
   useEffect(() => {
-    const screenWidth = window.innerWidth;
-    const initialViewMode = screenWidth > 600 ? "week" : "day";
-
-    /*
-         if (scheduler && !scheduler._$initialized) {
-      // Initialize the scheduler if it exists and hasn't been initialized yet
-      scheduler.init(
-        schedulerContainerRef.current,
-        new Date(),
-        initialViewMode
-      );
-      scheduler.parse(event, "json");
+    if (!schedulerInitializedRef.current) {
+      const screenWidth = window.innerWidth;
+      const initialViewMode = screenWidth > 600 ? "week" : "day";
+      scheduler.init("scheduler_here", new Date(), initialViewMode);
+      schedulerInitializedRef.current = true;
     }
-  }, [event, scheduler]);
-*/
+  }, []);
 
-    scheduler.init("scheduler_here", new Date(), initialViewMode);
+  useEffect(() => {
+    // Don't process if scheduler not initialized
+    if (!schedulerInitializedRef.current) return;
+    
+    const currentCount = event.length;
+    const previousCount = previousEventCountRef.current;
+    const isInitialLoad = initialLoadRef.current;
+    
+    // Get scheduler events to check for sync
+    const schedulerEvents = scheduler.getEvents() || [];
+    const schedulerIds = new Set(schedulerEvents.map((e: any) => String(e.id)));
+    const propsIds = new Set(event.map((e: any) => String(e.id)));
+    
+    // Check if IDs match (accounts for temp IDs being replaced with real IDs)
+    const idsMatch = schedulerIds.size === propsIds.size && 
+                     [...schedulerIds].every((id) => propsIds.has(String(id)));
+    
+    // Check for new events from server that scheduler doesn't have
+    const hasNewEvents = event.length > schedulerEvents.length;
+    const hasMissingIds = [...propsIds].some((id) => !schedulerIds.has(String(id)));
+    
+    // Check if scheduler has events that props don't (optimistic events with temp IDs)
+    const hasExtraEvents = schedulerEvents.length > event.length;
+    
+    // Re-parse when:
+    // 1. Initial load (must clear and start fresh)
+    // 2. Count decreased (deletion - must clear)
+    // 3. New events from server that scheduler doesn't have
+    const eventCountDecreased = currentCount < previousCount;
+    const needsFullRefresh = isInitialLoad || eventCountDecreased;
+    const needsMerge = (hasNewEvents || hasMissingIds) && !needsFullRefresh;
 
-    // Clear all existing events before parsing new ones to prevent accumulation
-    scheduler.clearAll();
-    scheduler.parse(event, "json");
+    // Only update if needed - prevent unnecessary re-renders
+    if (needsFullRefresh || needsMerge) {
+      if (operationInProgressRef.current && needsMerge) {
+        // Operation in progress + new server events: smart merge
+        // Find events in props that scheduler doesn't have (by ID)
+        const eventsToAdd = event.filter((e: any) => {
+          const eventId = String(e.id);
+          if (schedulerIds.has(eventId)) {
+            return false; // Already in scheduler
+          }
+          
+          // Check if this event matches an optimistic event by time (temp ID replaced with real ID)
+          const eventStart = new Date(e.start_date).getTime();
+          const eventEnd = new Date(e.end_date).getTime();
+          const matchingOptimisticEvent = schedulerEvents.find((se: any) => {
+            const seStart = new Date(se.start_date).getTime();
+            const seEnd = new Date(se.end_date).getTime();
+            // Match by time (same start and end)
+            return seStart === eventStart && seEnd === eventEnd;
+          });
+          
+          if (matchingOptimisticEvent) {
+            // Replace temp ID with real ID instead of adding duplicate
+            try {
+              scheduler.changeEventId(String(matchingOptimisticEvent.id), eventId);
+            } catch (err) {
+              // If changeEventId fails, delete old and add new
+              try {
+                scheduler.deleteEvent(String(matchingOptimisticEvent.id));
+                scheduler.parse([e], "json");
+              } catch (_) {}
+            }
+            return false; // Don't add, already handled
+          }
+          
+          return true; // New event to add
+        });
+        
+        if (eventsToAdd.length > 0) {
+          // Add new events without clearing (seamless merge - no blink)
+          scheduler.parse(eventsToAdd, "json");
+          scheduler.render();
+        } else {
+          // All events handled (either already there or replaced)
+          scheduler.render(); // Ensure UI is updated
+        }
+      } else if (!operationInProgressRef.current || needsFullRefresh) {
+        // No operation in progress OR initial load/deletion: full refresh only if needed
+        if (needsFullRefresh) {
+          scheduler.clearAll();
+          scheduler.parse(event, "json");
+          scheduler.render();
+          initialLoadRef.current = false;
+        } else if (!idsMatch && currentCount > 0) {
+          // IDs don't match - refresh to sync
+          scheduler.clearAll();
+          scheduler.parse(event, "json");
+          scheduler.render();
+        }
+        // If idsMatch and no needsFullRefresh, don't update (prevent blink)
+      }
+      // If operation in progress and no new events, don't update (prevent blink)
+    }
+    
+    // Update the count for next comparison
+    previousEventCountRef.current = currentCount;
   }, [event]);
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (scheduler._$initialized) {
-      return console.log("scheduler initialized");
+      return;
     }
     try {
       scheduler.skin = "material";
-      console.log("Scheduler Configs");
       //scheduler.config.header = ["week", "dato", "today", "prev", "next"];
       scheduler.config.hour_date = timeFormatState ? "%H:%i" : "%g:%i %A";
 
@@ -558,7 +667,17 @@ const Scheduler = ({
             }
           } catch (_) {}
 
-          // Call onSubmit and handle result
+          // Set flag to prevent re-parsing during creation
+          operationInProgressRef.current = true;
+          
+          // Show success immediately (optimistic UI)
+          showToast('save', 'success');
+          setButtonStates(prev => ({ ...prev, save: 'success' }));
+          
+          // Immediate render for better responsiveness
+          scheduler.render();
+          
+          // Call onSubmit in background (don't wait)
           const handleSaveResult = async () => {
             try {
               const result = await onSubmit({ start_date: startDate, end_date: endDate, text: eventText });
@@ -567,12 +686,13 @@ const Scheduler = ({
               if (createdId) {
                 try { scheduler.changeEventId(id, createdId); } catch (_) {}
               }
-              // Show success feedback
-              setButtonStates(prev => ({ ...prev, save: 'success' }));
-              showToast('save', 'success');
+              // Success already shown
+              // Reset flag immediately since we removed router.refresh() - no need for delay
+              operationInProgressRef.current = false;
               
-              // Note: The actual database ID will be available after the page refreshes
-              // The scheduler will get the correct ID from the dates prop
+              setTimeout(() => {
+                setButtonStates(prev => ({ ...prev, save: 'idle' }));
+              }, 1000);
             } catch (error) {
               // Revert the newly added event on failure
               try {
@@ -593,18 +713,16 @@ const Scheduler = ({
                   showToast('save', 'error');
                 }
               }
-            } finally {
-              // Reset button state after feedback
               setTimeout(() => {
                 setButtonStates(prev => ({ ...prev, save: 'idle' }));
+                // Reset flag even on error
+                operationInProgressRef.current = false;
               }, 2000);
             }
           };
           
+          // Run in background without blocking UI
           handleSaveResult();
-          
-          // Immediate render for better responsiveness
-          scheduler.render();
         }
       });
       scheduler.attachEvent("onBeforeLightbox", function (id: any) {
@@ -654,7 +772,15 @@ const Scheduler = ({
 
         onDataUpdated("update", ev, id);
 
-        // Optimistic UI already applied by dhtmlx; call API, revert on failure
+        // Set flag to prevent re-parsing during update
+        operationInProgressRef.current = true;
+
+        // Show success immediately (optimistic UI)
+        showToast('save', 'success', 'update');
+        setButtonStates((prev) => ({ ...prev, save: 'success' }));
+        try { scheduler.render(); } catch (_) {}
+
+        // Optimistic UI already applied by dhtmlx; call API in background, revert on failure
         const handleUpdateResult = async () => {
           try {
             await onUpdateReservation(id, {
@@ -662,8 +788,12 @@ const Scheduler = ({
               end_date: ev.end_date,
               text: ev.text,
             });
-            setButtonStates((prev) => ({ ...prev, save: 'success' }));
-            showToast('save', 'success', 'update');
+            // Success already shown
+            setTimeout(() => {
+              setButtonStates((prev) => ({ ...prev, save: 'idle' }));
+              // Reset flag after operation completes
+              operationInProgressRef.current = false;
+            }, 1000);
           } catch (error) {
             // Revert on failure
             const prev = lastEventStateRef.current[String(id)];
@@ -675,15 +805,15 @@ const Scheduler = ({
             }
             setButtonStates((prev) => ({ ...prev, save: 'error' }));
             showToast('save', 'error', 'update');
-          } finally {
             setTimeout(() => {
               setButtonStates((prev) => ({ ...prev, save: 'idle' }));
+              // Reset flag even on error
+              operationInProgressRef.current = false;
             }, 2000);
           }
         };
 
         handleUpdateResult();
-        try { scheduler.render(); } catch (_) {}
       });
 
       scheduler.attachEvent("onEventDeleted", function (id: any, ev: any) {
