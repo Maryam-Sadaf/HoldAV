@@ -46,6 +46,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
 
   // Local list to ensure immediate UI updates even if network/browser caches
   const [list, setList] = useState<any[]>(Array.isArray(reservationsInit) ? reservationsInit : []);
+  const [isCancelling, setIsCancelling] = useState(false);
   useEffect(() => {
     if (Array.isArray(reservations)) {
       setList(reservations);
@@ -267,6 +268,8 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
             key={reservation.id}
             reservation={reservation}
             currentUser={currentUser}
+            isCancelling={isCancelling}
+            setIsCancelling={setIsCancelling}
           />
         ))}
       </div>

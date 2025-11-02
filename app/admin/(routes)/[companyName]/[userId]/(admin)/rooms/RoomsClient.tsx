@@ -177,7 +177,26 @@ const RoomsClient = ({
             )}
           </div>
         ) : (
-          <EmptyState title="Ingen data" subTitle="Ingen møterom funnet" />
+          <div className="flex items-center justify-center py-20">
+            {currentUser?.role === "admin" && (
+              <div
+                onClick={() =>
+                  router.push(
+                    `/admin/${companyName}/${currentUser?.id}/rooms/slug`
+                  )
+                }
+                className="w-full max-w-sm cursor-pointer transition hover:opacity-90 relative"
+              >
+                <span className="absolute inset-0 z-[1]" />
+                <Card
+                  outline
+                  label="Legg til møterom"
+                  flex
+                  icon={AiOutlinePlus}
+                />
+              </div>
+            )}
+          </div>
         )}
       </Width>
     </div>

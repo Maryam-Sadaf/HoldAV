@@ -31,6 +31,8 @@ interface SchedulerProps {
   onDateSelect: (startDate: string, endDate: string, eventName: string) => void;
   currentUser?: safeUser | null;
   isLoading?: boolean;
+  isCancelling?: boolean;
+  setIsCancelling?: (value: boolean) => void;
 }
 
 const scheduler =
@@ -49,6 +51,8 @@ const Scheduler = ({
   onDateSelect,
   onCancelReservation,
   isLoading = false,
+  isCancelling = false,
+  setIsCancelling,
 }: SchedulerProps) => {
   const schedulerContainerRef = useRef(null);
   const [event, setEvent] = useState<Dates[]>([]);
@@ -59,6 +63,7 @@ const Scheduler = ({
     save: 'idle',
     cancel: 'idle'
   });
+  const isCancellingRef = useRef<boolean>(Boolean(isCancelling));
   // Keep track of last known event state to support reverting after failed updates/validation
   const lastEventStateRef = useRef<Record<string, { start: Date; end: Date }>>({});
   // Track if scheduler has been initially loaded to prevent blink on updates
@@ -194,6 +199,10 @@ const Scheduler = ({
       updateButtonUI('cancel', buttonStates.cancel);
     }
   }, [isLoading, buttonStates, updateButtonUI]);
+
+  useEffect(() => {
+    isCancellingRef.current = Boolean(isCancelling);
+  }, [isCancelling]);
 
   useEffect(() => {
     // Always update event state when dates prop changes
@@ -816,38 +825,53 @@ const Scheduler = ({
         handleUpdateResult();
       });
 
+      scheduler.attachEvent("onBeforeEventDelete", function (id: any, ev: any) {
+        if (isCancellingRef.current) {
+          toast.error("En annen kansellering pågår. Vent litt.");
+          return false;
+        }
+        isCancellingRef.current = true;
+        if (setIsCancelling) {
+          setIsCancelling(true);
+        }
+        setButtonStates((prev) => ({ ...prev, cancel: 'loading' }));
+        return true;
+      });
+
       scheduler.attachEvent("onEventDeleted", function (id: any, ev: any) {
         if (scheduler.getState().new_event) {
           return;
         }
         if (currentUser?.id === ev.userId) {
-          //console.log("🚀 ~ currentUser?.id:", currentUser?.id);
-          //console.log("🚀 ~ ev.userId:", ev.userId);
           if (onDataUpdated) {
             onDataUpdated("delete", ev, id);
             
-            // Handle cancel with result feedback
             const handleCancelResult = async () => {
               try {
                 await onCancelReservation(id);
-                // Show success feedback
                 setButtonStates(prev => ({ ...prev, cancel: 'success' }));
                 showToast('cancel', 'success');
               } catch (error) {
-                // Show error feedback
                 setButtonStates(prev => ({ ...prev, cancel: 'error' }));
                 showToast('cancel', 'error');
+                // Re-add the event since cancellation failed
+                try {
+                  scheduler.addEvent({ ...ev, id });
+                  scheduler.render();
+                } catch (_) {}
               } finally {
-                // Reset button state after feedback
                 setTimeout(() => {
                   setButtonStates(prev => ({ ...prev, cancel: 'idle' }));
                 }, 2000);
+                isCancellingRef.current = false;
+                if (setIsCancelling) {
+                  setIsCancelling(false);
+                }
               }
             };
             
             handleCancelResult();
             
-            // Immediate render for better responsiveness
             scheduler.render();
           }
         } else {
@@ -895,6 +919,8 @@ const Scheduler = ({
     onSubmit,
     setButtonStates,
     showToast,
+    isCancelling,
+    setIsCancelling,
   ]);
 
   //}, []);

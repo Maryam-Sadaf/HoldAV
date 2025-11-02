@@ -10,7 +10,9 @@ export async function authorizedUser(params: IParams) {
     
     // Convert URL format back to company name format
     // URL: "test-company-as" -> Company name: "Test Company AS"
-    const convertedCompanyName = companyName
+    const decodedCompanyName = decodeURIComponent(companyName ?? '').trim();
+    const normalizedSlug = decodedCompanyName.replace(/\s+/g, '-');
+    const convertedCompanyName = normalizedSlug
       ?.split('-')
       .map(word => word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');

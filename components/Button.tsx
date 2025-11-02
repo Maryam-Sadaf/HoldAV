@@ -11,6 +11,7 @@ interface ButtonProps {
   type?: boolean;
   icon?: IconType;
   loading?: boolean;
+  loadingLabel?: string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -21,6 +22,7 @@ const Button: React.FC<ButtonProps> = ({
   small,
   icon: Icon,
   loading,
+  loadingLabel,
 }) => {
   return (
     <button
@@ -52,7 +54,7 @@ const Button: React.FC<ButtonProps> = ({
             aria-hidden="true"
           />
         )}
-        <span>{loading ? "Laster..." : label}</span>
+        <span>{loading ? (loadingLabel ?? "Laster...") : label}</span>
       </span>
     </button>
   );

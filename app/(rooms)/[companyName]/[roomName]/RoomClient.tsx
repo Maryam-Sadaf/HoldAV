@@ -54,6 +54,7 @@ const Reservation = ({
   });
   const [isReservation, setIsReservation] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [currentTimeFormatState, setCurrentTimeFormatState] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const DynamicScheduler = dynamic(
@@ -291,8 +292,11 @@ const Reservation = ({
     }
   };
   const onCancelReservation = async (id: any) => {
+    if (!id) return;
+    if (!isCancelling) {
+      setIsCancelling(true);
+    }
     try {
-      setIsLoading(true);
       await axios.delete(`/api/reservation/${id}`);
       
       // Update reservations state by removing the deleted reservation
@@ -305,7 +309,7 @@ const Reservation = ({
       // Re-throw error so Scheduler component can handle it
       throw error;
     } finally {
-      setIsLoading(false);
+      setIsCancelling(false);
     }
   };
   const handleDateSelect = (
@@ -370,6 +374,8 @@ const Reservation = ({
           onCancelReservation={onCancelReservation}
           currentUser={currentUser}
           isLoading={isLoading}
+          isCancelling={isCancelling}
+          setIsCancelling={setIsCancelling}
         />
       </div>
     </div>

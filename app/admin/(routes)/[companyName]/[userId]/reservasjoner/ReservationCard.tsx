@@ -14,11 +14,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface ReservationCardProps {
   reservation?: any;
   currentUser?: safeUser | null;
+  isCancelling: boolean;
+  setIsCancelling: (value: boolean) => void;
 }
 
 const ReservationCard: React.FC<ReservationCardProps> = ({
   reservation,
   currentUser,
+  isCancelling,
+  setIsCancelling,
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -88,6 +92,7 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
         }
         toast.error("Reservasjon finnes ikke eller er allerede kansellert");
       }
+      setIsCancelling(false);
     },
     onError: (err: any, _id, context: any) => {
       // Check if it's a 404 (already deleted) - don't restore, just refresh
@@ -106,15 +111,20 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
         toast.dismiss();
         toast.error("Kunne ikke kansellere reservasjon");
       }
+      setHasToasted(false);
+      setIsCancelling(false);
     },
     onSettled: () => {
       setIsLoading(false);
+      setIsCancelling(false);
     },
   });
 
   const onCancelReservation = async (id: any) => {
-    if (isDeleted || isLoading || deleteReservation.isPending) return;
+    if (!id) return;
+    if (isDeleted || isLoading || deleteReservation.isPending || isCancelling) return;
     setIsLoading(true);
+    setIsCancelling(true);
     deleteReservation.mutate(id);
   };
   const formatDate = (inputDate: any) => {
@@ -147,8 +157,10 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
           />
         </div>
         */}
-        <div className="flex w-full">
-          <div className="font-light text-[13px]">{reservation?.text}</div>
+        <div className="w-full">
+          <div className="font-light text-[13px] whitespace-pre-line break-all leading-snug max-w-full md:break-words">
+            {reservation?.text}
+          </div>
         </div>
         <hr />
         <div className="flex flex-row items-center justify-between gap-1">
@@ -186,7 +198,9 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
           label={isDeleted ? "Kansellert" : "Kanseller Reservasjon"}
           onClick={() => onCancelReservation(reservation?.id)}
           // Disabled state to avoid double clicks while deleting
-          disabled={isDeleted || isLoading || deleteReservation.isPending}
+          disabled={isDeleted || isLoading || deleteReservation.isPending || isCancelling}
+          loading={isLoading}
+          loadingLabel="Kansellerer..."
         />
       </div>
     </div>
