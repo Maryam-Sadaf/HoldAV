@@ -244,102 +244,142 @@ const Scheduler = ({
   }, []);
 
   useEffect(() => {
-    // Don't process if scheduler not initialized
-    if (!schedulerInitializedRef.current) return;
-    
-    const currentCount = event.length;
-    const previousCount = previousEventCountRef.current;
-    const isInitialLoad = initialLoadRef.current;
-    
-    // Get scheduler events to check for sync
-    const schedulerEvents = scheduler.getEvents() || [];
-    const schedulerIds = new Set(schedulerEvents.map((e: any) => String(e.id)));
-    const propsIds = new Set(event.map((e: any) => String(e.id)));
-    
-    // Check if IDs match (accounts for temp IDs being replaced with real IDs)
-    const idsMatch = schedulerIds.size === propsIds.size && 
-                     [...schedulerIds].every((id) => propsIds.has(String(id)));
-    
-    // Check for new events from server that scheduler doesn't have
-    const hasNewEvents = event.length > schedulerEvents.length;
-    const hasMissingIds = [...propsIds].some((id) => !schedulerIds.has(String(id)));
-    
-    // Check if scheduler has events that props don't (optimistic events with temp IDs)
-    const hasExtraEvents = schedulerEvents.length > event.length;
-    
-    // Re-parse when:
-    // 1. Initial load (must clear and start fresh)
-    // 2. Count decreased (deletion - must clear)
-    // 3. New events from server that scheduler doesn't have
-    const eventCountDecreased = currentCount < previousCount;
-    const needsFullRefresh = isInitialLoad || eventCountDecreased;
-    const needsMerge = (hasNewEvents || hasMissingIds) && !needsFullRefresh;
-
-    // Only update if needed - prevent unnecessary re-renders
-    if (needsFullRefresh || needsMerge) {
-      if (operationInProgressRef.current && needsMerge) {
-        // Operation in progress + new server events: smart merge
-        // Find events in props that scheduler doesn't have (by ID)
-        const eventsToAdd = event.filter((e: any) => {
-          const eventId = String(e.id);
-          if (schedulerIds.has(eventId)) {
-            return false; // Already in scheduler
-          }
-          
-          // Check if this event matches an optimistic event by time (temp ID replaced with real ID)
-          const eventStart = new Date(e.start_date).getTime();
-          const eventEnd = new Date(e.end_date).getTime();
-          const matchingOptimisticEvent = schedulerEvents.find((se: any) => {
-            const seStart = new Date(se.start_date).getTime();
-            const seEnd = new Date(se.end_date).getTime();
-            // Match by time (same start and end)
-            return seStart === eventStart && seEnd === eventEnd;
-          });
-          
-          if (matchingOptimisticEvent) {
-            // Replace temp ID with real ID instead of adding duplicate
-            try {
-              scheduler.changeEventId(String(matchingOptimisticEvent.id), eventId);
-            } catch (err) {
-              // If changeEventId fails, delete old and add new
-              try {
-                scheduler.deleteEvent(String(matchingOptimisticEvent.id));
-                scheduler.parse([e], "json");
-              } catch (_) {}
-            }
-            return false; // Don't add, already handled
-          }
-          
-          return true; // New event to add
-        });
-        
-        if (eventsToAdd.length > 0) {
-          // Add new events without clearing (seamless merge - no blink)
-          scheduler.parse(eventsToAdd, "json");
-          scheduler.render();
-        } else {
-          // All events handled (either already there or replaced)
-          scheduler.render(); // Ensure UI is updated
-        }
-      } else if (!operationInProgressRef.current || needsFullRefresh) {
-        // No operation in progress OR initial load/deletion: full refresh only if needed
-        if (needsFullRefresh) {
-          scheduler.clearAll();
-          scheduler.parse(event, "json");
-          scheduler.render();
-          initialLoadRef.current = false;
-        } else if (!idsMatch && currentCount > 0) {
-          // IDs don't match - refresh to sync
-          scheduler.clearAll();
-          scheduler.parse(event, "json");
-          scheduler.render();
-        }
-        // If idsMatch and no needsFullRefresh, don't update (prevent blink)
-      }
-      // If operation in progress and no new events, don't update (prevent blink)
+    if (!schedulerInitializedRef.current) {
+      return;
     }
-    
-    // Update the count for next comparison
+
+    const currentCount = event.length;
+    const schedulerEventsInitial = scheduler.getEvents() || [];
+
+    const toDate = (value: any) => {
+      if (value instanceof Date) {
+        return new Date(value.getTime());
+      }
+      return value ? new Date(value) : new Date(NaN);
+    };
+
+    const isValidDate = (value: any) => {
+      const date = toDate(value);
+      return !Number.isNaN(date.getTime());
+    };
+
+    const getTime = (value: any) => {
+      const date = toDate(value);
+      return date.getTime();
+    };
+
+    if (initialLoadRef.current) {
+      scheduler.clearAll();
+      if (currentCount > 0) {
+        scheduler.parse(event, "json");
+      }
+      scheduler.render();
+      initialLoadRef.current = false;
+      previousEventCountRef.current = currentCount;
+      return;
+    }
+
+    if (currentCount === 0) {
+      if (schedulerEventsInitial.length > 0) {
+        scheduler.clearAll();
+        scheduler.render();
+      }
+      previousEventCountRef.current = 0;
+      return;
+    }
+
+    const propsIds = new Set(event.map((e: any) => String(e.id)));
+
+    schedulerEventsInitial.forEach((se: any) => {
+      const idStr = String(se.id);
+      if (!propsIds.has(idStr) && !scheduler.getState().new_event) {
+        try {
+          scheduler.deleteEvent(se.id);
+        } catch (_) {}
+      }
+    });
+
+    let schedulerEvents = scheduler.getEvents() || [];
+    const schedulerMap = new Map<string, any>();
+    schedulerEvents.forEach((se: any) => {
+      schedulerMap.set(String(se.id), se);
+    });
+
+    const eventsToAdd: Dates[] = [];
+
+    event.forEach((ev: any) => {
+      const idStr = String(ev.id);
+      const existing = schedulerMap.get(idStr);
+
+      if (existing) {
+        const startChanged = isValidDate(existing.start_date) && isValidDate(ev.start_date)
+          ? getTime(existing.start_date) !== getTime(ev.start_date)
+          : existing.start_date !== ev.start_date;
+        const endChanged = isValidDate(existing.end_date) && isValidDate(ev.end_date)
+          ? getTime(existing.end_date) !== getTime(ev.end_date)
+          : existing.end_date !== ev.end_date;
+        const textChanged = existing.text !== ev.text;
+        const cssChanged = existing.css !== ev.css;
+
+        if (startChanged || endChanged || textChanged || cssChanged) {
+          existing.start_date = toDate(ev.start_date);
+          existing.end_date = toDate(ev.end_date);
+          existing.text = ev.text;
+          existing.css = ev.css;
+          try {
+            scheduler.updateEvent(idStr);
+          } catch (_) {}
+        }
+        return;
+      }
+
+      const matchingByTime = schedulerEvents.find((se: any) => {
+        const seIdStr = String(se.id);
+        if (propsIds.has(seIdStr)) {
+          return false;
+        }
+        if (!isValidDate(se.start_date) || !isValidDate(se.end_date) || !isValidDate(ev.start_date) || !isValidDate(ev.end_date)) {
+          return false;
+        }
+        return getTime(se.start_date) === getTime(ev.start_date) && getTime(se.end_date) === getTime(ev.end_date);
+      });
+
+      if (matchingByTime) {
+        try {
+          const oldId = matchingByTime.id;
+          scheduler.changeEventId(oldId, idStr);
+          const updated = scheduler.getEvent(idStr);
+          if (updated) {
+            updated.start_date = toDate(ev.start_date);
+            updated.end_date = toDate(ev.end_date);
+            updated.text = ev.text;
+            updated.css = ev.css;
+            try {
+              scheduler.updateEvent(idStr);
+            } catch (_) {}
+            schedulerMap.set(idStr, updated);
+            schedulerMap.delete(String(oldId));
+          }
+          schedulerEvents = scheduler.getEvents() || [];
+          return;
+        } catch (_) {
+          // fall back to adding event below
+        }
+      }
+
+      eventsToAdd.push(ev);
+    });
+
+    if (eventsToAdd.length > 0) {
+      try {
+        scheduler.parse(eventsToAdd, "json");
+      } catch (_) {}
+    }
+
+    try {
+      scheduler.render();
+    } catch (_) {}
+
     previousEventCountRef.current = currentCount;
   }, [event]);
 
