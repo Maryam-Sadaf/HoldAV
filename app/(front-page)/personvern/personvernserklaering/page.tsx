@@ -1,20 +1,14 @@
-import Personvern from "@/components/Sections/Personvern";
-import Footer from "@/components/Sections/Footer";
-import Navbar from "@/components/Sections/Navbar";
-import React from "react";
-
-const page = () => {
+const PersonvernserklaeringPage = () => {
   return (
-    <div className="w-full min-h-screen">
-      <Navbar currentUser={false} />
-      <div className="flex flex-col items-center justify-center w-full">
-        <div className="w-full max-w-[1280px] py-10 lg:py-20 px-4">
-          <Personvern />
-        </div>
+    <main className="flex min-h-screen items-center justify-center px-4 text-center">
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-semibold">Personvernerklæring</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Detaljert informasjon om vår personvernerklæring kommer snart.
+        </p>
       </div>
-      <Footer />
-    </div>
+    </main>
   );
 };
 
-export default page;
+export default PersonvernserklaeringPage;

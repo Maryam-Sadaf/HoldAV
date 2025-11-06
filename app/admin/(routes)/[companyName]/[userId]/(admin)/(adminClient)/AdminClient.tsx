@@ -204,23 +204,25 @@ const AdminClient = ({
                 outline
               />
             </div>
-            <div
-              onClick={() => {
-                const slugCompany = String(companyName ?? "").replace(/\s+/g, "-");
-                const uid = String(currentUser?.id ?? "");
-                const targetPath = `/admin/${slugCompany}/${uid}/all-users`;
-                router.push(targetPath);
-              }}
-              className="cursor-pointer transition hover:opacity-90 relative"
-            >
-<span className="absolute inset-0 z-[1] pointer-events-none" />
+            {currentUser?.role === "admin" && (
+              <div
+                onClick={() => {
+                  const slugCompany = String(companyName ?? "").replace(/\s+/g, "-");
+                  const uid = String(currentUser?.id ?? "");
+                  const targetPath = `/admin/${slugCompany}/${uid}/all-users`;
+                  router.push(targetPath);
+                }}
+                className="cursor-pointer transition hover:opacity-90 relative"
+              >
+                <span className="absolute inset-0 z-[1] pointer-events-none" />
 
-              <Card
-                label="Brukere"
-                number={authorizedUsers?.length || 0}
-                outline
-              />
-            </div>
+                <Card
+                  label="Brukere"
+                  number={authorizedUsers?.length || 0}
+                  outline
+                />
+              </div>
+            )}
             <div
               onClick={() => {
                 const slugCompany = String(companyName ?? "").replace(/\s+/g, "-");
