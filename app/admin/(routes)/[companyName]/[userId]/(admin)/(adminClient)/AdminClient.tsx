@@ -218,7 +218,11 @@ const AdminClient = ({
 
                 <Card
                   label="Brukere"
-                  number={authorizedUsers?.length || 0}
+                  number={
+                    (authorizedUsers?.filter(
+                      (user: any) => user.userId !== company?.userId
+                    )?.length) || 0
+                  }
                   outline
                 />
               </div>

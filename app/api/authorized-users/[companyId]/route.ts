@@ -11,13 +11,22 @@ export async function GET(
 ) {
   try {
     const { companyId } = await params;
+    const { searchParams } = new URL(request.url);
+    const requestedUserId = searchParams.get("userId");
+
+    const normalizedSlug = decodeURIComponent(companyId ?? "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+
     const authorizedUsers = await authorizedUser({
-      companyName: companyId,
+      companyName: normalizedSlug,
+      requestedUserId,
     });
 
     return NextResponse.json(authorizedUsers);
   } catch (error) {
-    console.error(error);
+    console.error("Failed getting authorized users for companyId:", await params, error);
     throw new Error("Failed getting authorized users");
   }
 }

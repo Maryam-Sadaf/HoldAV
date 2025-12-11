@@ -7,6 +7,7 @@ import { unstable_cache } from "next/cache";
 interface IParams {
   //userId?: string;
   companyName?: string;
+  requestedUserId?: string;
 }
 
 const getCachedRooms = unstable_cache(
@@ -27,12 +28,12 @@ const getCachedRooms = unstable_cache(
 
 export default async function getRoomsByCompanyName(params: IParams) {
   try {
-    const { companyName } = params;
+    const { companyName, requestedUserId } = params;
     if (!companyName) {
       return;
     }
     
-    const rooms = await getCachedRooms(companyName);
+    let rooms = await getCachedRooms(companyName);
 
     const safeRooms = rooms.map((room: any) => ({
       ...room,

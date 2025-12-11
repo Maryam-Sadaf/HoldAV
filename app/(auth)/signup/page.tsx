@@ -150,6 +150,9 @@ const SignupForm = () => {
     }
   }, [inviteData, setValue]);
 
+  const buildSlug = (name?: string | null) =>
+    name ? name.replace(/\s+/g, "-").toLowerCase() : "";
+
   const onSubmit: SubmitHandler<FieldValues> = async (data, e) => {
     e?.preventDefault();
     if (hasSubmittedRef.current) return;
@@ -157,12 +160,11 @@ const SignupForm = () => {
     setIsLoading(true);
 
     try {
+      let registerResponse;
+      const token = searchParams?.get('token');
+
       // If this is an invitation-based signup, use the invitation data
       if (inviteData?.valid) {
-        // Get token from URL
-        const token = searchParams?.get('token');
-        
-        // Create user with company association
         const signupData: any = {
           ...data,
           isInvited: true,
@@ -174,23 +176,32 @@ const SignupForm = () => {
           signupData.companyId = inviteData.companyId;
           signupData.adminId = inviteData.adminId;
         }
-        
-        await axios.post("/api/register", signupData);
+
+        registerResponse = await axios.post("/api/register", signupData);
         await signIn("credentials", { ...data, redirect: false });
         if (!hasToastedRef.current) {
           toast.success("Registrert og koblet til selskapet!");
           hasToastedRef.current = true;
         }
-        router.push("/");
+        const companySlug =
+          registerResponse?.data?.company?.slug ||
+          buildSlug(registerResponse?.data?.company?.name) ||
+          buildSlug(inviteData.companyName);
+        const userId = registerResponse?.data?.user?.id;
+        if (companySlug && userId) {
+          router.push(`/admin/${companySlug}/${userId}/rooms`);
+        } else {
+          router.push("/");
+        }
       } else {
         // Regular signup (existing logic)
-        await axios.post("/api/register", data);
+        registerResponse = await axios.post("/api/register", data);
         await signIn("credentials", { ...data, redirect: false });
         if (!hasToastedRef.current) {
           toast.success("Registrert!");
           hasToastedRef.current = true;
         }
-        router.push("/");
+        router.push("/create");
       }
     } catch (error: any) {
       toast.error("Noe gikk galt");

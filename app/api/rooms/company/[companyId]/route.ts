@@ -13,14 +13,16 @@ export async function GET(
 ) {
   try {
     const { companyId } = await params;
-    // Convert URL slug back to company name format (e.g., "test-company-as" -> "Test Company AS")
-    const convertedCompanyName = companyId
-      ?.split('-')
-      .map(word => word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    const { searchParams } = new URL(request.url);
+    const requestedUserId = searchParams.get("userId");
+    const normalizedSlug = decodeURIComponent(companyId ?? "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase();
 
     const roomsForCompany = await getRoomsByCompanyName({
-      companyName: convertedCompanyName,
+      companyName: normalizedSlug,
+      requestedUserId: requestedUserId || undefined,
     });
     
     const response = NextResponse.json(roomsForCompany);

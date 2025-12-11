@@ -177,7 +177,7 @@ const RoomsClient = ({
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-start py-20">
             {currentUser?.role === "admin" && (
               <div
                 onClick={() =>

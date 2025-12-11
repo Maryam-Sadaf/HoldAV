@@ -80,16 +80,18 @@ export async function POST(request: Request) {
     
     // Create user with or without company association
     const now = new Date();
+    const role = invitation ? 'user' : 'admin';
     const userData = {
       email,
       firstname,
       lastname,
       hashedPassword,
       accessToken: null,
-      role: 'user',
+      role,
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+      ...(invitation?.companyId && { companyId: invitation.companyId }),
     } as any;
 
     // If this is an invitation-based signup, add company association
@@ -143,12 +145,17 @@ export async function POST(request: Request) {
     const { hashedPassword: _, ...userWithoutPassword } = user;
 
     // Return user with company info if applicable
+    const companySlug = invitation?.companyName
+      ? invitation.companyName.replace(/\s+/g, "-").toLowerCase()
+      : undefined;
+
     const response = {
       user: userWithoutPassword,
       ...(invitation && {
         company: {
           id: invitation.companyId,
-          name: invitation.companyName
+          name: invitation.companyName,
+          slug: companySlug,
         }
       })
     };

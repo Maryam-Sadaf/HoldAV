@@ -35,13 +35,22 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Normalize slugged company names like "test-company-as" -> "Test Company AS"
-    const normalizedCompanyName = companyName
-      ?.split('-')
-      .map((word: string) => (word.toUpperCase() === 'AS' ? 'AS' : word.charAt(0).toUpperCase() + word.slice(1)))
-      .join(' ');
+    const normalizedSlug = decodeURIComponent(companyName ?? "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase();
 
-    const companyQs = await db.collection('companies').where('firmanavn', '==', normalizedCompanyName).limit(1).get();
+    let companyQs = await db.collection('companies').where('firmanavn', '==', normalizedSlug).limit(1).get();
+
+    // Fallback for legacy title-cased records
+    if (companyQs.empty && normalizedSlug) {
+      const legacyName = normalizedSlug
+        .split("-")
+        .map((word: string) => (word.toUpperCase() === "AS" ? "AS" : word.charAt(0).toUpperCase() + word.slice(1)))
+        .join(" ");
+      companyQs = await db.collection('companies').where('firmanavn', '==', legacyName).limit(1).get();
+    }
+
     const companyId = companyQs.empty ? null : ({ id: companyQs.docs[0].id, ...companyQs.docs[0].data() } as any);
     if (!companyId) {
       throw new Error("companyId is required");
