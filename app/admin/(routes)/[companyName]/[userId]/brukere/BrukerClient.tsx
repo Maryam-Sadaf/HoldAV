@@ -165,7 +165,6 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
               {errors?.password as ReactNode}
             </span>
           </div>
-
           <div className="mb-3">
             <Button label="Opprett" type loading={isLoading} disabled={isLoading} />
           </div>
