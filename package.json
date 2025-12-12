@@ -50,7 +50,7 @@
     "googleapis": "^131.0.0",
     "lucide-react": "^0.309.0",
     "net": "^1.0.2",
-    "next": "^16.0.10",
+    "next": "14.2.5",
     "next-auth": "^4.24.5",
     "nodemailer": "^6.9.8",
     "react": "^18",

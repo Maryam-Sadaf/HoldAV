@@ -5,7 +5,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import GoogleProvider from "next-auth/providers/google";
 import NextAuth from "next-auth/next";
-import { getSession, signOut } from "next-auth/react";
 
 export const config = {
   runtime: 'nodejs'

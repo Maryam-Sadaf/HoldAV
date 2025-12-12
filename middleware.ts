@@ -6,7 +6,6 @@ export const config = {
     // "/admin/:companyName/all-bookinger",
     // "/:companyName/:roomName",
     // "/mine-bookinger",
-    // "/admin/[...rest]"
-
+    // "/admin/[...rest]
   ],
 };
