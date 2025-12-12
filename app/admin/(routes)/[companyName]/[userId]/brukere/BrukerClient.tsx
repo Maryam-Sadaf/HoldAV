@@ -92,7 +92,6 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
       const status = error?.response?.status;
       const message = error?.response?.data || "Noe gikk galt";
       if (status === 409) {
-        // Server returns: "User already invited to this company"
         toast.error(message);
       } else if (status === 400) {
         toast.error(message);
@@ -102,17 +101,6 @@ const BrukerClient = ({ currentUser }: BrukerClientProps) => {
     } finally {
       setIsLoading(false);
       submittingRef.current = false;
-      //const subject = `En bruker har blitt opprettet for deg av firmaet: ${companyName}`;
-      //const htmlContent = `
-      //<p>Hei ${data?.firstname} ${data?.lastname}</p>
-      //<p><a href="https://www.holdav.no/login">Klikk her</a> for å logge inn!</p>
-      //
-      //<p>Vennlig Hilsen,<br/>
-      //holdav.no</p>
-      //`;
-      //
-      //sendCreationMail(data?.email, "Opprettet", subject, htmlContent);
-      //
     }
   };
   return (

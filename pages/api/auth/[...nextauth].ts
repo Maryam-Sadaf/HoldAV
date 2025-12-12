@@ -59,9 +59,7 @@ export const authOptions: AuthOptions = {
     strategy: "jwt",
     // maxAge: 3600,
   },
-  // jwt: {
-  //   maxAge: 3600,
-  // },
+
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (trigger == "update") {
