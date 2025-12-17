@@ -7,6 +7,7 @@ import { cache, generateCacheKey, CACHE_KEYS } from "@/lib/cache";
 /**
  * Helper function to check for reservation conflicts
  * Handles both overlapping reservations and exact same time conflicts
+ * IMPORTANT: This prevents double-booking of the same room + time slot
  */
 async function checkReservationConflict(
   roomId: string, 
@@ -18,6 +19,11 @@ async function checkReservationConflict(
     const newEnd = new Date(endDate);
 
     // Validate dates
+    if (isNaN(newStart.getTime()) || isNaN(newEnd.getTime())) {
+      console.error('Invalid date values in checkReservationConflict');
+      return true; // Invalid dates
+    }
+
     if (newStart >= newEnd) {
       return true; // Invalid time range
     }
@@ -27,18 +33,30 @@ async function checkReservationConflict(
     const conflictingQs = await db.collection('reservations')
       .where('roomId', '==', roomId)
       .where('start_date', '<', newEnd)
-      .limit(50)
+      .limit(100) // Increased limit to catch more conflicts
       .get();
 
     // Check for conflicts in memory
     const hasConflict = conflictingQs.docs.some((doc) => {
       const data = doc.data() as any;
+      if (!data.start_date || !data.end_date) {
+        return false; // Skip invalid reservations
+      }
+      
       const existingStart = data?.start_date?.toDate ? data.start_date.toDate() : new Date(data?.start_date);
       const existingEnd = data?.end_date?.toDate ? data.end_date.toDate() : new Date(data?.end_date);
       
+      // Validate existing dates
+      if (isNaN(existingStart.getTime()) || isNaN(existingEnd.getTime())) {
+        return false; // Skip invalid dates
+      }
+      
       // Check for overlap: two time ranges overlap if one starts before the other ends
       // This covers both exact matches and partial overlaps
-      return existingStart < newEnd && existingEnd > newStart;
+      // Overlap occurs when: existingStart < newEnd && existingEnd > newStart
+      const overlaps = existingStart < newEnd && existingEnd > newStart;
+      
+      return overlaps;
     });
 
     return hasConflict;

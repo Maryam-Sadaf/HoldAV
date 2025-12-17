@@ -64,23 +64,35 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
           companyName: companyName,
         });
 
-        // Invalidate the rooms query to trigger a fresh fetch
-        await queryClient.invalidateQueries({ queryKey: ["roomsForCompany"] });
+        const newRoom = response.data;
+
+        // Optimistic update: Add the new room to the cache immediately
+        queryClient.setQueryData(["roomsForCompany", companyName], (oldData: any) => {
+          if (!oldData) return [newRoom];
+          // Check if room already exists to avoid duplicates
+          const exists = oldData.some((room: any) => room.id === newRoom.id);
+          if (exists) return oldData;
+          return [...oldData, newRoom];
+        });
 
         toast.success("Møterom Opprettet");
 
-        // Navigate to rooms page
+        // Invalidate and refetch the rooms query to ensure fresh data
+        await queryClient.invalidateQueries({ queryKey: ["roomsForCompany", companyName] });
+        await queryClient.refetchQueries({ queryKey: ["roomsForCompany", companyName] });
+
+        // Navigate to rooms page - the optimistic update will show immediately
         router.push(
           `/admin/${companyName?.replace(/\s+/g, "-")}/${currentUser?.id}/rooms`
         );
-        
-        // Refresh to ensure server-side data is also updated
-        router.refresh();
       } else {
         toast.error("Ugyldig navn");
       }
     } catch (error: any) {
       console.log(error);
+      // Revert optimistic update on error by invalidating and refetching
+      queryClient.invalidateQueries({ queryKey: ["roomsForCompany", companyName] });
+      queryClient.refetchQueries({ queryKey: ["roomsForCompany", companyName] });
       if (error.response) {
         // Check the status code and customize the error message accordingly
         if (error.response.status === 400) {

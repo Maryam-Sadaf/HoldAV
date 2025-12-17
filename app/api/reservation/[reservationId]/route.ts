@@ -88,26 +88,95 @@ export async function PUT(request: Request, { params }: { params: Promise<IParam
     if (!reservationId || typeof reservationId !== "string") {
       return NextResponse.json({ error: "Invalid reservation ID" }, { status: 400 });
     }
-    // Optimized: Check permission first, then update
+    
+    // CRITICAL: Check ownership before allowing update
     const existingReservationSnap = await db.collection('reservations').doc(reservationId).get();
     const existingReservation = existingReservationSnap.exists ? ({ id: existingReservationSnap.id, ...existingReservationSnap.data() } as any) : null;
 
     if (!existingReservation) {
       return NextResponse.json(
-        { error: "Reservation not found or access denied" }, 
+        { error: "Reservation not found" }, 
         { status: 404 }
       );
     }
 
-    // Fast update without complex OR condition
+    // SECURITY: Enforce ownership - users can only update their own reservations
+    if (existingReservation.userId !== currentUser.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: You can only update your own reservations" }, 
+        { status: 403 }
+      );
+    }
+
+    // Check for time conflicts with other reservations (excluding this one)
+    const newStart = new Date(start_date);
+    const newEnd = new Date(end_date);
+
+    // Validate dates
+    if (newStart >= newEnd) {
+      return NextResponse.json(
+        { error: "Invalid time range: start date must be before end date" },
+        { status: 400 }
+      );
+    }
+
+    // Check for conflicts with other reservations in the same room
+    const conflictingQs = await db.collection('reservations')
+      .where('roomId', '==', existingReservation.roomId)
+      .where('start_date', '<', newEnd)
+      .limit(50)
+      .get();
+
+    // Check for conflicts in memory (excluding the current reservation being updated)
+    const hasConflict = conflictingQs.docs.some((doc) => {
+      // Skip the reservation we're updating
+      if (doc.id === reservationId) return false;
+      
+      const data = doc.data() as any;
+      const existingStart = data?.start_date?.toDate ? data.start_date.toDate() : new Date(data?.start_date);
+      const existingEnd = data?.end_date?.toDate ? data.end_date.toDate() : new Date(data?.end_date);
+      
+      // Check for overlap: two time ranges overlap if one starts before the other ends
+      return existingStart < newEnd && existingEnd > newStart;
+    });
+
+    if (hasConflict) {
+      return NextResponse.json(
+        { error: "This reservation slot is already booked" },
+        { status: 400 }
+      );
+    }
+
+    // Update reservation
     await db.collection('reservations').doc(reservationId).update({
-      start_date: start_date,
-      end_date: end_date,
+      start_date: newStart,
+      end_date: newEnd,
       text: text,
     });
-    const reservation = { id: reservationId, start_date, end_date, text } as any;
+    const reservation = { id: reservationId, start_date: newStart, end_date: newEnd, text } as any;
 
-    // Return success response immediately
+    // Invalidate caches
+    try {
+      const { generateCacheKey, CACHE_KEYS } = await import("@/lib/cache");
+      const cache = (await import("@/lib/cache")).cache;
+      
+      if (existingReservation?.userId) {
+        const userKey = generateCacheKey(CACHE_KEYS.USER_RESERVATIONS, existingReservation.userId);
+        cache.delete(userKey);
+      }
+      if (existingReservation?.companyName) {
+        const companyKey = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, existingReservation.companyName);
+        cache.delete(companyKey);
+      }
+      if (existingReservation?.roomId) {
+        const roomKey = generateCacheKey(CACHE_KEYS.ROOM_RESERVATIONS, String(existingReservation.roomId));
+        cache.delete(roomKey);
+      }
+    } catch (e) {
+      console.error('Cache invalidation error (reservation update):', e);
+    }
+
+    // Return success response
     return NextResponse.json({ 
       success: true, 
       message: "Reservation updated successfully",

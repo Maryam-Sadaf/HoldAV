@@ -27,7 +27,19 @@ export default async function getReservationByCompanyName(params: IParams) {
     // Resolve companyId first to avoid companyName mismatches
     const decoded = (() => { try { return decodeURIComponent(companyName); } catch { return companyName; } })();
     const withSpaces = companyName.includes('%20') ? companyName.replace(/%20/g, ' ') : decoded;
-    const nameCandidates = [convertedCompanyName, companyName, decoded, withSpaces]
+    
+    // Companies are stored with firmanavn in lowercase with hyphens (see create-company route)
+    // So we need to try the normalized lowercase version as well
+    const normalizedSlug = decoded.trim().replace(/\s+/g, "-").toLowerCase();
+    
+    const nameCandidates = [
+      convertedCompanyName,  // "Test Company AS" (title case with spaces)
+      companyName,            // Original from URL (e.g., "Tekbex" or "test-company-as")
+      decoded,                // URL decoded
+      withSpaces,            // With %20 replaced by spaces
+      normalizedSlug,         // Lowercase with hyphens (e.g., "tekbex" or "test-company-as")
+      companyName.toLowerCase(), // Lowercase original
+    ]
       .filter((v): v is string => !!v)
       .filter((v, i, a) => a.indexOf(v) === i);
 

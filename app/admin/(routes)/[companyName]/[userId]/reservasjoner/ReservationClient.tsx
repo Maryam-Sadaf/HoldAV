@@ -63,6 +63,10 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
         </div>
       );
     }
+    
+    // Ensure reservations is an array
+    const reservationsArray = Array.isArray(reservations) ? reservations : (Array.isArray(reservationsInit) ? reservationsInit : []);
+    
     const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
@@ -70,15 +74,28 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
     tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
     
     // Filter reservations to only show today's reservations
-    const todaysReservations = reservations.filter((reservation: any) => {
-      const startDate = new Date(reservation.start_date);
-      return startDate >= today && startDate < tomorrow;
+    const todaysReservations = reservationsArray.filter((reservation: any) => {
+      if (!reservation || !reservation.start_date) return false;
+      try {
+        const startDate = new Date(reservation.start_date);
+        if (isNaN(startDate.getTime())) return false; // Invalid date
+        return startDate >= today && startDate < tomorrow;
+      } catch (e) {
+        return false;
+      }
     });
     
-    // Filter to show only upcoming reservations (start_time >= current time today)
+    // Filter to show upcoming and current reservations (end_time >= current time today)
+    // This includes meetings that are currently happening or haven't started yet
     const upcomingReservations = todaysReservations.filter((reservation: any) => {
-      const startDate = new Date(reservation.start_date);
-      return startDate >= now; // Show if meeting hasn't started yet or is starting now
+      if (!reservation || !reservation.start_date || !reservation.end_date) return false;
+      try {
+        const endDate = new Date(reservation.end_date);
+        if (isNaN(endDate.getTime())) return false; // Invalid date
+        return endDate >= now; // Show if meeting hasn't ended yet (includes current and upcoming)
+      } catch (e) {
+        return false;
+      }
     });
     
     const sortedReservations = [...upcomingReservations].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());

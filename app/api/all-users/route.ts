@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebaseAdmin";
+import getCurrentUser from "@/app/server/actions/getCurrentUser";
 
 export async function GET() {
   try {
+    // Get current user to filter by adminId
+    const currentUser = await getCurrentUser();
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const currentAdminId = currentUser.id;
     const snapshot = await db.collection("users").orderBy("createdAt", "desc").get();
 
     // Preload companies into a map for quick lookup by id
@@ -107,11 +118,21 @@ export async function GET() {
           createdBy,
           userId,
           createdAt,
+          adminId, // Include adminId for filtering
         };
       })
     );
 
-    return NextResponse.json(results, { status: 200 });
+    // Filter to only show users created/invited by the current admin
+    const filteredResults = results.filter((user) => {
+      // Only show users where adminId matches the current admin's userId
+      // Ensure both values are strings for proper comparison
+      const userAdminId = user.adminId ? String(user.adminId) : null;
+      const adminIdToMatch = String(currentAdminId);
+      return userAdminId === adminIdToMatch;
+    });
+
+    return NextResponse.json(filteredResults, { status: 200 });
   } catch (error: any) {
     console.error("/api/all-users error:", error);
     return NextResponse.json(

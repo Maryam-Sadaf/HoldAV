@@ -44,13 +44,14 @@ const RoomsClient = ({
   });
 
   const { data: roomsOfTheCurrentCompany, isLoading: roomsLoading } = useQuery({
-    queryKey: ["roomsForCompany"],
+    queryKey: ["roomsForCompany", companyName],
     queryFn: async () => {
       const res = await axios.get(`/api/rooms/company/${companyName}`);
       return res.data;
     },
     initialData: roomsOfTheCurrentCompanyInit,
     refetchOnMount: true,
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
   });
   const { data: company, isLoading: companyLoading } = useQuery({
     queryKey: ["company"],

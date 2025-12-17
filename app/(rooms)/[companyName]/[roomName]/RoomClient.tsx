@@ -48,6 +48,8 @@ const Reservation = ({
     Array.isArray(reservationsByRomName) ? reservationsByRomName : []
   );
   const selectedDatesRef = useRef({ start_date: "", end_date: "" });
+  // Track initial mount to prevent overwriting optimistic updates
+  const isInitialMountRef = useRef(true);
 
   const [formData, setFormData] = useState({
     text: "",
@@ -85,16 +87,38 @@ const Reservation = ({
   }, [authorizedUsers, currentUser]);
 
   useEffect(() => {
-    setReservationsState(
-      Array.isArray(reservationsByRomName) ? reservationsByRomName : []
-    );
+    const newReservations = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
+    
+    // On initial mount, set the state
+    if (isInitialMountRef.current) {
+      setReservationsState(newReservations);
+      isInitialMountRef.current = false;
+      return;
+    }
+    
+    // After initial mount, only merge new reservations from server
+    // This prevents overwriting optimistic updates during reservation creation
+    setReservationsState((prev) => {
+      const prevMap = new Map(prev.map((r: any) => [String(r.id), r]));
+      // Add/update from server data, but don't remove optimistic updates
+      newReservations.forEach((r: any) => {
+        prevMap.set(String(r.id), r);
+      });
+      return Array.from(prevMap.values());
+    });
   }, [reservationsByRomName]);
 
+  // Use ref to track previous dates to prevent unnecessary recalculations
+  const previousDatesRef = useRef<string>('');
+  
   useEffect(() => {
     const source = Array.isArray(reservationsState) ? reservationsState : [];
     
     if (source.length === 0) {
-      setDates([]);
+      // Only update if dates is not already empty
+      if (dates.length > 0) {
+        setDates([]);
+      }
       return;
     }
 
@@ -104,12 +128,18 @@ const Reservation = ({
 
     if (!currentRoomId && !currentRoomNameLc && !routeRoomNameLc) {
       // If no identifiers, show all (shouldn't happen but fallback)
-      setDates(source.map((r: any) => ({
+      const datesArray = source.map((r: any) => ({
         id: r.id,
         start_date: new Date(r.start_date),
         end_date: new Date(r.end_date),
         text: r.text || "",
-      })));
+      }));
+      // Only update if content actually changed
+      const datesKey = datesArray.map(d => `${d.id}-${d.start_date.getTime()}-${d.end_date.getTime()}`).join('|');
+      if (previousDatesRef.current !== datesKey) {
+        previousDatesRef.current = datesKey;
+        setDates(datesArray);
+      }
       return;
     }
 
@@ -151,7 +181,12 @@ const Reservation = ({
       text: r.text || "",
     }));
     
-    setDates(datesArray);
+    // Only update if content actually changed (prevent unnecessary Scheduler re-renders)
+    const datesKey = datesArray.map(d => `${d.id}-${d.start_date.getTime()}-${d.end_date.getTime()}-${d.text}`).join('|');
+    if (previousDatesRef.current !== datesKey) {
+      previousDatesRef.current = datesKey;
+      setDates(datesArray);
+    }
   }, [reservationsState, roomByName?.id, roomByName?.name, roomNameParam]);
   const addMessage = (message: any) => {
     const maxLogLength = 5;
