@@ -66,7 +66,6 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
       <Suspense fallback={<RoomPageSkeleton />}>
         <div className="relative w-full ">
           <RoomClient
-            key={`${companyName}-${roomName}`}
             currentUser={currentUser}
             roomByName={roomByName}
             reservationsByRomName={uniqueReservations}

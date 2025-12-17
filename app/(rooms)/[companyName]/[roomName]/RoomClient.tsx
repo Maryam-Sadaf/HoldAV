@@ -397,7 +397,7 @@ const Reservation = ({
           onTimeFormatStateChange={handleTimeFormatStateChange}
         />
       </div>
-      <div className="scheduler_container overflow-auto">
+      <div className="scheduler_container overflow-auto relative">
         <DynamicScheduler
           dates={dates}
           timeFormatState={currentTimeFormatState}
@@ -412,6 +412,15 @@ const Reservation = ({
           isCancelling={isCancelling}
           setIsCancelling={setIsCancelling}
         />
+        {/* Subtle inline loading overlay - only over calendar section */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/30 z-40 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center space-x-2 bg-white/90 px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+              <span className="text-gray-600 text-xs font-medium">Lager reservasjon...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
