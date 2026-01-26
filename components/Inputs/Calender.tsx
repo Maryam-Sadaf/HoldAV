@@ -17,11 +17,27 @@ const AddToGoogleCalendarButton = ({
   location,
   userEmail,
 }: AddToGoogleCalendarButtonProps) => {
-  const googleCalendarLink = `https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(
+  // Convert ISO dates to Google Calendar format
+  const formatDateForGoogle = (dateString: string) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // Format: YYYYMMDDTHHMMSSZ
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const formattedStartDate = formatDateForGoogle(startDate);
+  const formattedEndDate = formatDateForGoogle(endDate);
+
+  const googleCalendarLink = `https://calendar.google.com/calendar/u/0/r/eventedit?text=${encodeURIComponent(
     eventTitle
-  )}&dates=${encodeURIComponent(startDate)}/${encodeURIComponent(
-    endDate
-  )}&details=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(
+  )}&dates=${formattedStartDate}/${formattedEndDate}&details=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(
     location
   )}&add=${encodeURIComponent(userEmail)}`;
 
@@ -30,7 +46,7 @@ const AddToGoogleCalendarButton = ({
       href={googleCalendarLink}
       target="_blank"
       rel="noopener noreferrer"
-      className="px-4 py-1 text-sm rounded-md hover:bg-light/75 hover:text-gray-600 bg-light"
+      className="px-4 py-1 text-sm rounded-lg bg-primary hover:opacity-80 text-white text-center transition w-full inline-block"
     >
       Legg til i Kalender
     </a>

@@ -5,10 +5,17 @@
 /**
  * Converts a room name to a normalized URL slug (always lowercase)
  * Example: "Meeting Room B" -> "meeting-room-b"
+ * Sanitizes special characters to prevent URL breaking
  */
 export const roomNameToSlug = (roomName: string): string => {
   return roomName
-    .replace(/\s+/g, "-")
+    .trim()
+    // Remove or replace dangerous characters
+    .replace(/[<>"'&\/\\]/g, '') // Remove dangerous chars
+    .replace(/[^a-zA-Z0-9\s-]/g, '-') // Replace other special chars with hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
     .toLowerCase();
 };
 
@@ -26,9 +33,18 @@ export const slugToRoomName = (slug: string): string => {
 
 /**
  * Normalizes company name to slug format (consistent with existing logic)
+ * Sanitizes special characters to prevent URL breaking
  */
 export const companyNameToSlug = (companyName: string): string => {
-  return companyName.replace(/\s+/g, "-");
+  return companyName
+    .trim()
+    // Remove or replace dangerous characters
+    .replace(/[<>"'&\/\\]/g, '') // Remove dangerous chars
+    .replace(/[^a-zA-Z0-9\s-]/g, '-') // Replace other special chars with hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .toLowerCase();
 };
 
 /**
@@ -45,15 +61,42 @@ export const slugToCompanyName = (slug: string): string => {
  * Formats room name for display with proper capitalization
  * Ensures first letter is always capital, handles both regular names and slug-like names
  * Examples: 
- * - "meeting-room-2" -> "Meeting-room-2"
+ * - "meeting-room-2" -> "Meeting Room 2"
  * - "Maryam" -> "Maryam" (unchanged)
- * - "meeting room b" -> "Meeting room b"
+ * - "meeting room b" -> "Meeting Room B"
  */
 export const formatRoomNameForDisplay = (roomName: string): string => {
   if (!roomName) return "";
   
-  // Simply capitalize the first letter, keep the rest as is
-  return roomName.charAt(0).toUpperCase() + roomName.slice(1);
+  // If it looks like a slug (contains hyphens), convert it back to proper format
+  if (roomName.includes('-')) {
+    return slugToRoomName(roomName);
+  }
+  
+  // Otherwise, just ensure proper title case
+  return roomName
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+/**
+ * Sanitizes and validates room name input
+ * Removes dangerous characters and validates format
+ */
+export const sanitizeRoomName = (roomName: string): string => {
+  if (!roomName) return "";
+  
+  return roomName
+    .trim()
+    // Remove dangerous characters that could break URLs or cause security issues
+    .replace(/[<>"'&\/\\]/g, '')
+    // Replace other problematic characters with spaces
+    .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+    // Normalize multiple spaces to single space
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 /**
@@ -68,7 +111,9 @@ export const formatRoomNameForDisplay = (roomName: string): string => {
 export const formatRoomNameForStorage = (roomName: string): string => {
   if (!roomName) return "";
   
-  return roomName
+  const sanitized = sanitizeRoomName(roomName);
+  
+  return sanitized
     .toLowerCase() // Convert to lowercase first
     .split(' ') // Split by spaces
     .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize first letter of each word

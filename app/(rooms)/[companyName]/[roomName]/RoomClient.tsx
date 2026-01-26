@@ -233,7 +233,7 @@ const Reservation = ({
 
     // Ensure room identifiers are present in the payload
     const ensuredRoomId = roomByName?.id;
-    const ensuredRoomName = (roomByName?.name || roomNameParam || "");
+    const ensuredRoomName = roomByName?.name; // Use actual room name from database, not URL param
     if (!ensuredRoomId || !ensuredRoomName) {
       throw new Error("Room information not available yet. Please try again.");
     }

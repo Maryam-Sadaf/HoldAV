@@ -12,6 +12,7 @@ import { authorizedUser } from "@/app/server/actions/authorizedUsers";
 import { getUsersByCompanyId } from "@/app/server/actions/getUsersByCompanyId";
 import { getCreatorByCompanyName } from "@/app/server/actions/getCreatorOfTheCompany";
 import RoomPageSkeleton from "@/components/loading/RoomPageSkeleton";
+import { formatRoomNameForDisplay } from "@/utils/slugUtils";
 
 // Force dynamic rendering to prevent caching issues when navigating between rooms
 export const dynamic = 'force-dynamic';
@@ -57,7 +58,7 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
     <Container>
       <div className="py-3 pb-3">
         <Heading
-          title={roomByName?.name || "Møterom eksisterer ikke"}
+          title={formatRoomNameForDisplay(roomByName?.name) || "Møterom eksisterer ikke"}
           flex
           subTitle={companyName || ""}
         />

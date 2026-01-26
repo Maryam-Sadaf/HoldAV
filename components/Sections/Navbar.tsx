@@ -5,6 +5,7 @@ import { Link, animateScroll as scroll } from "react-scroll";
 import { usePathname, useRouter } from "next/navigation";
 import NextLink from "next/link";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 const NavbarDrawer = dynamic(() => import("./NavbarDrawer"), { ssr: false });
 import { CiMenuFries } from "react-icons/ci";
 
@@ -17,6 +18,10 @@ const Navbar = ({ currentUser }: NavProps) => {
   const router = useRouter();
   const currentRoute = usePathname();
   const isFrontPage = currentRoute === "/";
+  
+  // Use client-side session to get real-time user state
+  const { data: session } = useSession();
+  const clientUser = session?.user || currentUser;
 
   const handleNav = () => {
     setNav(!nav);
@@ -103,7 +108,7 @@ const Navbar = ({ currentUser }: NavProps) => {
           <div className="w-auto">
             <div className="flex flex-wrap items-center">
               <div
-                className={`hidden w-auto ${currentUser ? " " : "lg:block"}`}
+                className={`hidden w-auto ${!clientUser ? "lg:block" : ""}`}
               >
                 <ul className="flex items-center mr-8">
                   <li className="font-medium tracking-tight cursor-pointer hover:font-semibold hover:text-gray-900">
@@ -112,7 +117,7 @@ const Navbar = ({ currentUser }: NavProps) => {
                 </ul>
               </div>
               <div
-                className={`hidden w-auto ${currentUser ? " " : "lg:block"}`}
+                className={`hidden w-auto ${!clientUser ? "lg:block" : ""}`}
               >
                 <div className="inline-block">
                   <NextLink

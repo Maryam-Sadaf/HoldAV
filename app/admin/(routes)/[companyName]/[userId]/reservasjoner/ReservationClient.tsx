@@ -47,6 +47,8 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
   // Local list to ensure immediate UI updates even if network/browser caches
   const [list, setList] = useState<any[]>(Array.isArray(reservationsInit) ? reservationsInit : []);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<string>('all'); // For InfoScreen room filter
+  
   useEffect(() => {
     if (Array.isArray(reservations)) {
       setList(reservations);
@@ -67,6 +69,9 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
     // Ensure reservations is an array
     const reservationsArray = Array.isArray(reservations) ? reservations : (Array.isArray(reservationsInit) ? reservationsInit : []);
     
+    // Get unique room names for dropdown
+    const uniqueRooms = [...new Set(reservationsArray.map((r: any) => r.roomName).filter(Boolean))];
+    
     const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
@@ -74,7 +79,7 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
     tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
     
     // Filter reservations to only show today's reservations
-    const todaysReservations = reservationsArray.filter((reservation: any) => {
+    let todaysReservations = reservationsArray.filter((reservation: any) => {
       if (!reservation || !reservation.start_date) return false;
       try {
         const startDate = new Date(reservation.start_date);
@@ -84,6 +89,11 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
         return false;
       }
     });
+    
+    // Filter by selected room if not 'all'
+    if (selectedRoom !== 'all') {
+      todaysReservations = todaysReservations.filter((r: any) => r.roomName === selectedRoom);
+    }
     
     // Filter to show upcoming and current reservations (end_time >= current time today)
     // This includes meetings that are currently happening or haven't started yet
@@ -129,13 +139,31 @@ const ReservationsClient: React.FC<ReservationsClientProps> = ({
               })}
             </div>
           </div>
+          
+          {/* Room Selection Dropdown */}
+          {uniqueRooms.length > 1 && (
+            <div className="mt-4 flex justify-start bg ">
+              <select 
+                value={selectedRoom} 
+                onChange={(e) => setSelectedRoom(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-[#4F518C] focus:outline-none focus:ring-2 focus:ring-indigo-500 "
+              >
+                <option value="all">Alle møterom</option>
+                {uniqueRooms.map((roomName: string) => (
+                  <option key={roomName} value={roomName}>{roomName}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
         <div className="px-6">
+          
           {/* Next Upcoming Meeting Card - Highlighted */}
           {nextMeeting && (
             <div className="rounded-2xl p-6 mb-6 border border-indigo-700/50 bg-[#4F518C]">
+              
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-indigo-200 text-xs font-medium mb-2 uppercase tracking-wide">

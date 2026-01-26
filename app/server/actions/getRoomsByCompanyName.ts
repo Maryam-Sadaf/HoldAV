@@ -3,6 +3,7 @@ import getCurrentUser from "./getCurrentUser";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { unstable_cache } from "next/cache";
+import { slugToCompanyName } from "@/utils/slugUtils";
 
 interface IParams {
   //userId?: string;
@@ -12,12 +13,34 @@ interface IParams {
 
 const getCachedRooms = unstable_cache(
   async (companyName: string) => {
-    const qs = await db
-      .collection('rooms')
-      .where('companyName', '==', companyName)
-      .orderBy('createdAt', 'desc')
-      .get();
-    return qs.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+    // Convert slug format to proper company name for database query
+    const properCompanyName = slugToCompanyName(companyName);
+    
+    // Try multiple variations to find the company
+    const variations = [
+      properCompanyName,
+      companyName,
+      decodeURIComponent(companyName),
+      companyName.replace(/-/g, ' '),
+      companyName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    ].filter((v, i, arr) => v && arr.indexOf(v) === i);
+    
+    let rooms: any[] = [];
+    
+    for (const variation of variations) {
+      const qs = await db
+        .collection('rooms')
+        .where('companyName', '==', variation)
+        .orderBy('createdAt', 'desc')
+        .get();
+      
+      if (!qs.empty) {
+        rooms = qs.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+        break;
+      }
+    }
+    
+    return rooms;
   },
   ['rooms-by-company'],
   {

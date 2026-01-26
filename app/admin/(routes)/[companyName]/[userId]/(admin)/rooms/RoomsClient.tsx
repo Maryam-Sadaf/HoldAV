@@ -12,7 +12,7 @@ import Heading from "@/components/Heading";
 import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/EmptyState";
 import ContentLoader from "@/components/ContentLoader";
-import { formatRoomNameForDisplay } from "@/utils/slugUtils";
+import { formatRoomNameForDisplay, roomNameToSlug, companyNameToSlug } from "@/utils/slugUtils";
 
 interface RoomsClientProps {
   currentUser?: any | null;
@@ -34,13 +34,14 @@ const RoomsClient = ({
   const [authChecked, setAuthChecked] = useState(false);
 
   const { data: authorizedUsers } = useQuery({
-    queryKey: ["authorizedUsers"],
+    queryKey: ["authorizedUsers", companyName],
     queryFn: async () => {
       const res = await axios.get(`/api/authorized-users/${companyName}`);
       return res.data;
     },
     initialData: authorizedUsersInit,
-    refetchOnMount: true,
+    refetchOnMount: false, // Prevent immediate refetch to avoid hydration issues
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   const { data: roomsOfTheCurrentCompany, isLoading: roomsLoading } = useQuery({
@@ -50,17 +51,18 @@ const RoomsClient = ({
       return res.data;
     },
     initialData: roomsOfTheCurrentCompanyInit,
-    refetchOnMount: true,
+    refetchOnMount: true, // Enable refetch to get fresh data
     staleTime: 0, // Always consider data stale to ensure fresh fetches
   });
   const { data: company, isLoading: companyLoading } = useQuery({
-    queryKey: ["company"],
+    queryKey: ["company", companyName],
     queryFn: async () => {
       const res = await axios.get(`/api/company/${companyName}`);
       return res.data;
     },
     initialData: companyInit,
-    refetchOnMount: true,
+    refetchOnMount: false, // Prevent immediate refetch
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   useEffect(() => {
@@ -138,11 +140,7 @@ const RoomsClient = ({
         {roomsOfTheCurrentCompany?.length ? (
           <div>
             {roomsOfTheCurrentCompany?.map((room: any) => {
-              const targetPath = `/${String(companyName ?? "")
-                .replace(/\s+/g, "-")
-                .toLowerCase()}/${String(room?.name ?? "")
-                .replace(/\s+/g, "-")
-                .toLowerCase()}`;
+              const targetPath = `/${companyNameToSlug(companyName ?? "")}/${roomNameToSlug(room?.name ?? "")}`;
               return (
                 <div
                   key={room?.id}

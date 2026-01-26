@@ -5,6 +5,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { slugToCompanyName, formatRoomNameForStorage } from "@/utils/slugUtils";
 
+// Auto-sanitize room name function
+const autoSanitizeRoomName = (roomName: string): string => {
+  if (!roomName) return "";
+  
+  return roomName
+    .trim()
+    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/["']/g, '') // Remove quotes
+    .replace(/[&]/g, 'and') // Replace & with 'and'
+    .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
+    .replace(/[^a-zA-Z0-9\s-]/g, ' ') // Replace other special chars
+    .replace(/\s+/g, ' ') // Multiple spaces to single
+    .trim();
+};
+
 export async function POST(request: Request) {
   try {
     // Get session directly from the request
@@ -31,6 +46,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    // Auto-sanitize room name instead of blocking
+    const originalName = name;
+    const sanitizedRoomName = autoSanitizeRoomName(name);
+    
+    // Show what was changed if sanitization occurred
+    if (originalName !== sanitizedRoomName) {
+      console.log(`Room name auto-sanitized: "${originalName}" -> "${sanitizedRoomName}"`);
+    }
+
     // Convert URL format back to company name format using consistent utility
     const convertedCompanyName = companyName ? slugToCompanyName(companyName) : "";
     const providedCompanyName = companyName ?? "";
@@ -43,7 +67,7 @@ export async function POST(request: Request) {
       : decodedCompanyName;
 
     // Format room name with proper title case before saving to database
-    const formattedRoomName = formatRoomNameForStorage(name.trim());
+    const formattedRoomName = formatRoomNameForStorage(sanitizedRoomName);
 
     // First, find the company to get its ID
     let company: any = null;

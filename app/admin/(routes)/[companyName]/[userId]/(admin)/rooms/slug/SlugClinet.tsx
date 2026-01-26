@@ -21,7 +21,21 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const schema = z.object({
-    name: z.string().min(3, { message: "Navn er påkrevd" }),
+    name: z.string()
+      .min(3, { message: "Navn må være minst 3 tegn" })
+      .max(50, { message: "Navn kan ikke være lengre enn 50 tegn" })
+      .transform((name) => {
+        // Auto-sanitize: convert special characters instead of blocking
+        return name
+          .trim()
+          .replace(/[<>]/g, '') // Remove angle brackets
+          .replace(/["']/g, '') // Remove quotes
+          .replace(/[&]/g, 'and') // Replace & with 'and'
+          .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
+          .replace(/[^a-zA-Z0-9\s-]/g, ' ') // Replace other special chars
+          .replace(/\s+/g, ' ') // Multiple spaces to single
+          .trim();
+      }),
   });
   const companyNameParams = useParams<{ companyName: string; item: string }>();
   const companyName = companyNameParams ? companyNameParams.companyName : null;
@@ -35,9 +49,9 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
     },
     resolver: async (data) => {
       try {
-        await schema.parseAsync(data);
+        const result = await schema.parseAsync(data);
         return {
-          values: data,
+          values: result,
           errors: {},
         };
       } catch (error: any) {
@@ -60,7 +74,7 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
       const roomName = data?.name;
       if (typeof roomName === "string") {
         const response = await axios.post(`/api/rooms/create-room`, {
-          name: roomName.trim(), // Keep original casing, just trim whitespace
+          name: roomName, // Already sanitized by zod transform
           companyName: companyName,
         });
 
@@ -75,15 +89,19 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
           return [...oldData, newRoom];
         });
 
-        toast.success("Møterom Opprettet");
-
-        // Invalidate and refetch the rooms query to ensure fresh data
+        // Force a hard refresh of the rooms query to ensure fresh data
         await queryClient.invalidateQueries({ queryKey: ["roomsForCompany", companyName] });
         await queryClient.refetchQueries({ queryKey: ["roomsForCompany", companyName] });
+        
+        // Also invalidate any cached room data
+        queryClient.removeQueries({ queryKey: ["roomsForCompany"] });
 
-        // Navigate to rooms page - the optimistic update will show immediately
+        toast.success("Møterom Opprettet");
+
+        // Navigate to rooms page using proper slug utility
+        const { companyNameToSlug } = await import("@/utils/slugUtils");
         router.push(
-          `/admin/${companyName?.replace(/\s+/g, "-")}/${currentUser?.id}/rooms`
+          `/admin/${companyNameToSlug(companyName || "")}/${currentUser?.id}/rooms`
         );
       } else {
         toast.error("Ugyldig navn");

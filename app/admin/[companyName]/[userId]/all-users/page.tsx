@@ -16,7 +16,6 @@ type UserRow = {
 const AllUsersPage = () => {
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [loading, setLoading] = useState(true);
-  // Using browser translation instead of custom toggle
 
   useEffect(() => {
     let isMounted = true;
@@ -45,32 +44,46 @@ const AllUsersPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+      <Container>
+        <div className="p-6">
+          <div className="flex items-center justify-center min-h-[300px]">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <p className="text-gray-600">Laster brukere...</p>
+            </div>
+          </div>
+        </div>
+      </Container>
     );
   }
 
   if (!users || users.length === 0) {
     return (
-      <div className="p-6">
-        <p className="text-gray-600">No users found.</p>
-      </div>
+      <Container>
+        <div className="p-6">
+          <Heading title="Alle Brukere" subTitle="Se og administrer alle registrerte brukere fra denne delen." />
+          <div className="flex items-center justify-center min-h-[200px]">
+            <p className="text-gray-600 text-center">
+              Ingen brukere funnet.
+            </p>
+          </div>
+        </div>
+      </Container>
     );
   }
 
   return (
     <Container>
     <div className="p-6">
-       <Heading title="All Users" subTitle="View and manage all registered users from this section." />
+       <Heading title="Alle Brukere" subTitle="Se og administrer alle registrerte brukere fra denne delen." />
       <div className="overflow-x-auto ">
         <table className="min-w-full divide-y divide-gray-200 border rounded-lg">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fullt Navn</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-post</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rolle</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Firmanavn</th>
               {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th> */}
               
             </tr>

@@ -29,34 +29,30 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
   let roomsOfTheCurrentCompany: any;
 
   const getRoomsForC = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_URL}/api/rooms/company/${companyName}`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) {
-      // This will activate the closest `error.js` Error Boundary
-      throw new Error("Klarte ikke hente møterom.");
+    try {
+      // Use direct server action instead of fetch to avoid hydration issues
+      return await getRoomsByCompanyName({ companyName: companyName });
+    } catch (error) {
+      console.error("Error fetching rooms:", error);
+      return [];
     }
-    return res.json();
   };
+  
   const getAuthorizedUsers = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_URL}/api/authorized-users/${companyName}`,
-      { next: { revalidate: 300 } }
-    );
-    if (!res.ok) {
-      // This will activate the closest `error.js` Error Boundary
-      throw new Error("Innhenting av data feilet");
+    try {
+      return await authorizedUser({ companyName: companyName });
+    } catch (error) {
+      console.error("Error fetching authorized users:", error);
+      return [];
     }
-    return res.json();
   };
+  
   const getCompany = async () => {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_URL}/api/company/${companyName}`,
+      `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/company/${companyName}`,
       { next: { revalidate: 300 } }
     );
     if (!res.ok) {
-      // This will activate the closest `error.js` Error Boundary
       throw new Error("Innhenting av data feilet");
     }
     return res.json();

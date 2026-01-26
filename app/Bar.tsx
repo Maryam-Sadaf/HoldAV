@@ -1,5 +1,5 @@
 "use client";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface BarProps {
   currentUser: any | null;
@@ -7,14 +7,18 @@ interface BarProps {
   rooms: any | null;
 }
 const Bar = ({ currentUser, routes, rooms }: BarProps) => {
+  // Use client-side session for real-time updates
+  const { data: session, status } = useSession();
+  const clientUser = session?.user || currentUser;
+  
   const logout = async () => {
     await signOut({ callbackUrl: "/" });
   };
   return (
     <div className="flex items-center justify-end pr-4 bg-white">
-      {currentUser ? (
+      {status !== "loading" && clientUser ? (
         <>
-          <div className="hidden w-auto lg:block">
+          <div className="w-auto">
             <ul className="flex items-center mr-8">
               <li
                 onClick={logout}
@@ -24,8 +28,8 @@ const Bar = ({ currentUser, routes, rooms }: BarProps) => {
               </li>
             </ul>
           </div>
-          {currentUser?.role === "admin" ? (
-            <div className="hidden w-auto lg:block">
+          {clientUser?.role === "admin" ? (
+            <div className="w-auto">
               <div className="inline-block">
                 <a
                   className="inline-block px-5 py-3 font-semibold tracking-tight text-center text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"
@@ -44,7 +48,7 @@ const Bar = ({ currentUser, routes, rooms }: BarProps) => {
               </div>
             </div>
           ) : (
-            <div className="hidden w-auto lg:block">
+            <div className="w-auto">
               <div className="inline-block">
                 <a
                   className="inline-block px-5 py-3 font-semibold tracking-tight text-center text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"

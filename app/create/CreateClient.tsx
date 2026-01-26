@@ -21,7 +21,21 @@ const CreateClient: React.FC<CreateClientProps> = ({ currentUser }) => {
     organisasjonsnummer: z
       .string()
       .min(1, { message: "Organisasjons nummer er påkrevd" }),
-    firmanavn: z.string().min(3, { message: "Firma navn er påkrevd" }),
+    firmanavn: z.string()
+      .min(3, { message: "Firma navn må være minst 3 tegn" })
+      .max(50, { message: "Firma navn kan ikke være lengre enn 50 tegn" })
+      .transform((name) => {
+        // Auto-sanitize: convert special characters instead of blocking
+        return name
+          .trim()
+          .replace(/[<>]/g, '') // Remove angle brackets
+          .replace(/["']/g, '') // Remove quotes
+          .replace(/[&]/g, 'and') // Replace & with 'and'
+          .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
+          .replace(/[^a-zA-Z0-9\s-]/g, ' ') // Replace other special chars
+          .replace(/\s+/g, ' ') // Multiple spaces to single
+          .trim();
+      }),
     adresse: z.string().min(3, { message: "Adresse er påkrevd" }),
     postnummer: z.string().min(3, { message: "Post nummer er påkrevd" }),
     poststed: z.string().min(3, { message: "Poststed er påkrevd" }),
@@ -70,8 +84,7 @@ const CreateClient: React.FC<CreateClientProps> = ({ currentUser }) => {
 
     try {
       const response = await axios.post("/api/create-company", data);
-      //console.log("🚀 ~ response:", response);
-
+      
       toast.success("Firma opprettet!");
       await update({
         ...session,
@@ -81,8 +94,10 @@ const CreateClient: React.FC<CreateClientProps> = ({ currentUser }) => {
         },
       });
 
+      // Use companyNameToSlug for consistent URL generation
+      const { companyNameToSlug } = await import("@/utils/slugUtils");
       router.push(
-        `/admin/${response?.data?.firmanavn?.replace(/\s+/g, "-")}/${
+        `/admin/${companyNameToSlug(response?.data?.firmanavn)}/${
           currentUser?.id
         }/rooms`
       );
