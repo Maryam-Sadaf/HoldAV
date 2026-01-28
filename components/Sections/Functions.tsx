@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-const Functions = () => {
+interface FunctionsProps {
+  currentUser?: any | null;
+}
+
+const Functions = ({ currentUser }: FunctionsProps) => {
   return (
     <section id="functions" className="w-full py-24 overflow-hidden bg-white">
       <div className="container px-4 mx-auto">
@@ -80,12 +84,14 @@ const Functions = () => {
           </div>
         </div>
         <div className="flex flex-row justify-center">
-          <Link
-            className="inline-block px-5 py-4 mx-auto font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"
-            href="/signup"
-          >
-            Kom i gang
-          </Link>
+          {!currentUser && (
+            <Link
+              className="inline-block px-5 py-4 mx-auto font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"
+              href="/signup"
+            >
+              Kom i gang
+            </Link>
+          )}
         </div>
       </div>
     </section>

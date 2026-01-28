@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-const Pricing = () => {
+interface PricingProps {
+  currentUser?: any | null;
+}
+
+const Pricing = ({ currentUser }: PricingProps) => {
   return (
     <section
       id="priser"
@@ -159,12 +163,14 @@ const Pricing = () => {
                     <span className="font-medium">Begrenset Kundestøtte</span>
                   </li>
                 </ul>
-                <Link
-                  className="inline-block w-full px-5 py-4 font-semibold tracking-tight text-center text-white transition duration-200 border rounded-lg cursor-pointer hover:text-white bg-secondary hover:bg-primary border-primary focus:ring-4 focus:ring-light"
-                  href="/signup"
-                >
-                  Kom i gang
-                </Link>
+                {!currentUser && (
+                  <Link
+                    className="inline-block w-full px-5 py-4 font-semibold tracking-tight text-center text-white transition duration-200 border rounded-lg cursor-pointer hover:text-white bg-secondary hover:bg-primary border-primary focus:ring-4 focus:ring-light"
+                    href="/signup"
+                  >
+                    Kom i gang
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -337,12 +343,14 @@ const Pricing = () => {
                     <span className="font-medium">Full Kundestøtte</span>
                   </li>
                 </ul>
-                <Link
-                  className="inline-block w-full px-5 py-4 font-semibold tracking-tight text-center text-white transition duration-200 border rounded-lg cursor-pointer hover:text-white bg-primary hover:bg-dark border-secondary focus:ring-4 focus:ring-dark"
-                  href="/signup"
-                >
-                  Kom i gang
-                </Link>
+                {!currentUser && (
+                  <Link
+                    className="inline-block w-full px-5 py-4 font-semibold tracking-tight text-center text-white transition duration-200 border rounded-lg cursor-pointer hover:text-white bg-primary hover:bg-dark border-secondary focus:ring-4 focus:ring-dark"
+                    href="/signup"
+                  >
+                    Kom i gang
+                  </Link>
+                )}
               </div>
             </div>
           </div>

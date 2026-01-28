@@ -69,6 +69,7 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
   const queryClient = useQueryClient();
 
   const onSubmit: SubmitHandler<FieldValues> = async (data: any) => {
+    if (isLoading) return; // Prevent multiple submissions
     setIsLoading(true);
     try {
       const roomName = data?.name;
@@ -142,7 +143,12 @@ const SlugClinet = ({ currentUser, userById }: SlugClientProps) => {
         </div>
         <p className="text-[12px] font-semibold "></p>
         <Width medium>
-          <Button label="Legg til" type />
+          <Button 
+            label={isLoading ? "Oppretter..." : "Legg til"} 
+            type 
+            disabled={isLoading}
+            loading={isLoading}
+          />
         </Width>
       </Width>
     </form>

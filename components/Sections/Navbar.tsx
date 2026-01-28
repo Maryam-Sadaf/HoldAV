@@ -140,7 +140,7 @@ const Navbar = ({ currentUser }: NavProps) => {
           </div>
         </div>
       </nav>
-      {nav && <NavbarDrawer handleNav={handleNav} />}
+      {nav && <NavbarDrawer handleNav={handleNav} currentUser={clientUser} />}
     </section>
   );
 };

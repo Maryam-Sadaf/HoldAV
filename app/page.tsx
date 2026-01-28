@@ -96,13 +96,13 @@ export default async function Home() {
       )}
 
       <main className="flex flex-col items-center justify-start min-h-screen">
-        <Header />
+        <Header currentUser={currentUser} />
         <Features />
         <MainFocus />
-        <Functions />
+        <Functions currentUser={currentUser} />
         <Integrations />
         {/*<Testimonials />*/}
-        <Pricing />
+        <Pricing currentUser={currentUser} />
         <Footer />
       </main>
     </div>

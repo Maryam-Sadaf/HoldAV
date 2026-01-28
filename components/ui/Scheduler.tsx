@@ -676,6 +676,7 @@ const Scheduler = ({
       );
 
       scheduler.attachEvent("onEventAdded", (id: any, ev: any) => {
+        console.log('🎆 onEventAdded triggered', { id, ev, operationInProgress: operationInProgressRef.current });
         setIsReservation(true);
         const startDate = ev.start_date;
         const endDate = ev.end_date;
@@ -728,8 +729,10 @@ const Scheduler = ({
           
           // Call onSubmit in background (don't wait)
           const handleSaveResult = async () => {
+            console.log('💾 Starting handleSaveResult...');
             try {
               const result = await onSubmit({ start_date: startDate, end_date: endDate, text: eventText });
+              console.log('✅ onSubmit completed successfully', result);
               // If backend returned a real reservation id, swap the temp id
               const createdId = (result as any)?.id;
               if (createdId) {
@@ -743,6 +746,7 @@ const Scheduler = ({
                 setButtonStates(prev => ({ ...prev, save: 'idle' }));
               }, 1000);
             } catch (error) {
+              console.error('❌ onSubmit failed:', error);
               // Revert the newly added event on failure
               try {
                 scheduler.deleteEvent(id);

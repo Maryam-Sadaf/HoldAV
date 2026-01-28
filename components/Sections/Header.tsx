@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-const Header = () => {
+interface HeaderProps {
+  currentUser?: any | null;
+}
+
+const Header = ({ currentUser }: HeaderProps) => {
   return (
     <section id="hjem" className="w-full overflow-hidden">
       <div className="pt-16 overflow-hidden bg-white pb-28">
@@ -15,12 +19,14 @@ const Header = () => {
               Velkommen til HOLD AV - det intuitive bookingsystemet som tar bort
               stresset fra romreservasjoner, helt gratis!
             </p>
-            <Link
-              className="inline-block px-5 py-4 mb-6 font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"
-              href="/signup"
-            >
-              Kom i gang
-            </Link>
+            {!currentUser && (
+              <Link
+                className="inline-block px-5 py-4 mb-6 font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-indigo-300"
+                href="/signup"
+              >
+                Kom i gang
+              </Link>
+            )}
             {/*<p className="mb-20 text-sm tracking-tight text-gray-600">
               No Credit Card Required / Cancel Anytime
   </p>*/}

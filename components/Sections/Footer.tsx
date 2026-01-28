@@ -4,27 +4,31 @@ import React from "react";
 import NextLink from "next/link";
 import { Link, animateScroll as scroll } from "react-scroll";
 import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const Footer = () => {
   const router = useRouter();
   const currentRoute = usePathname();
   const isFrontPage = currentRoute === "/";
+  const { data: session } = useSession();
   return (
     <section className="w-full pt-24 overflow-hidden bg-white">
       <div className="container px-4 mx-auto">
         <h2 className="max-w-2xl mx-auto text-6xl tracking-tighter text-center font-heading mb-11">
           Hva er det du venter på?
         </h2>
-        <div className="flex flex-wrap justify-center mb-32">
-          <div className="w-auto">
-            <NextLink
-              className="inline-block px-5 py-4 font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-secondary"
-              href="/signup"
-            >
-              Kom i gang
-            </NextLink>
+        {!session && (
+          <div className="flex flex-wrap justify-center mb-32">
+            <div className="w-auto">
+              <NextLink
+                className="inline-block px-5 py-4 font-semibold tracking-tight text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-secondary"
+                href="/signup"
+              >
+                Kom i gang
+              </NextLink>
+            </div>
           </div>
-        </div>
+        )}
         <div className="border-b border-gray-200 pb-9">
           <div className="flex flex-wrap items-center justify-between -m-4">
             <div className="w-auto p-4">

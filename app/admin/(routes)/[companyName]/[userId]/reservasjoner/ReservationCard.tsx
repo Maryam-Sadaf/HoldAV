@@ -37,13 +37,13 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
     },
     onMutate: async (id: string) => {
       setIsLoading(true);
-      
+
       // Show success notification FIRST
       if (!hasToasted) {
         toast.success("Reservasjon kansellert");
         setHasToasted(true);
       }
-      
+
       await queryClient.cancelQueries({ queryKey: ["reservationsForUserOrCompany"], exact: false });
       const previous = queryClient.getQueriesData({ queryKey: ["reservationsForUserOrCompany"], exact: false });
 
@@ -145,66 +145,65 @@ const ReservationCard: React.FC<ReservationCardProps> = ({
   }
 
   return (
-    <div className="w-full col-span-1 py-3 group">
-      <div className="flex flex-col w-full gap-2 p-6 border rounded-md  border-primary">
-        {/*
-        <div className="relative w-full overflow-hidden aspect-square rounded-xl">
-          <Image
-            fill
-            className="object-cover w-full h-full transition group-hover:scale-110"
-            src="https://img.freepik.com/free-vector/elegant-2024-new-year-annual-calendar-design-vector_1055-19359.jpg?size=626&ext=jpg&ga=GA1.1.1965427455.1684397966&semt=sph"
-            alt="Reservation"
-          />
-        </div>
-        */}
-        <div className="w-full">
-          <div className="font-light text-[13px] whitespace-pre-line break-all leading-snug max-w-full md:break-words">
+    <div className="w-full col-span-1 py-3">
+      <div className="flex flex-col w-full h-80 p-6 border rounded-md border-primary">
+
+        {/* ===== TOP CONTENT (TEXT) ===== */}
+        <div className="flex-1 min-h-0">
+          <div className="text-[13px] leading-snug break-words overflow-hidden line-clamp-3">
             {reservation?.text}
           </div>
-        </div>
-        <hr />
-        <div className="flex flex-row items-center justify-between gap-1">
-          <div className="font-semibold text-[14px]">Møterom: </div>
-          <div className="font-light text-[13px]">
-            {reservation?.roomName || ""}
-          </div>
-        </div>
-        <hr />
-        <div className="flex flex-row items-center justify-between gap-1">
-          <div className="font-semibold text-[14px]">Fra: </div>
-          <div className="font-light text-[13px]">
-            {formatDate(reservation?.start_date)}
-          </div>
-        </div>
-        <div className="flex flex-row items-center justify-between gap-1">
-          <div className="font-semibold text-[14px]">Til: </div>
-          <div className="font-light text-[13px]">
-            {formatDate(reservation?.end_date)}
-          </div>
-        </div>
-        <hr />
 
-        <AddToGoogleCalendarButton
-          eventTitle={reservation?.text || "Hold-Av Reservasjon"}
-          startDate={reservation?.start_date || ""}
-          endDate={reservation?.end_date || ""}
-          eventDetails={`Rom: ${reservation?.room?.companyName || "Møterom"}`}
-          location=""
-          userEmail={currentUser?.email}
-        />
+          <hr className="my-3" />
 
-        <Button
-          small
-          label={isDeleted ? "Kansellert" : "Kanseller Reservasjon"}
-          onClick={() => onCancelReservation(reservation?.id)}
-          // Disabled state to avoid double clicks while deleting
-          disabled={isDeleted || isLoading || deleteReservation.isPending || isCancelling}
-          loading={isLoading}
-          loadingLabel="Kansellerer..."
-        />
+          <div className="flex justify-between text-[13px]">
+            <span className="font-semibold">Møterom:</span>
+            <span className="text-right text-[13px] leading-snug max-w-[60%] line-clamp-2 break-words">
+              {reservation?.roomName}
+            </span>
+
+          </div>
+
+          <hr className="my-3" />
+
+          <div className="flex justify-between text-[13px]">
+            <span className="font-semibold">Fra:</span>
+            <span>{formatDate(reservation?.start_date)}</span>
+          </div>
+
+          <div className="flex justify-between text-[13px] mt-1">
+            <span className="font-semibold">Til:</span>
+            <span>{formatDate(reservation?.end_date)}</span>
+          </div>
+        </div>
+
+        {/* ===== FOOTER (ALWAYS BOTTOM) ===== */}
+       <div className="mt-4 flex flex-col">
+  <div className="mb-2">
+    <AddToGoogleCalendarButton
+      eventTitle={reservation?.text || "Hold-Av Reservasjon"}
+      startDate={reservation?.start_date || ""}
+      endDate={reservation?.end_date || ""}
+      eventDetails={`Rom: ${reservation?.room?.companyName || "Møterom"}`}
+      location=""
+      userEmail={currentUser?.email}
+    />
+  </div>
+
+  <Button
+    small
+    label={isDeleted ? "Kansellert" : "Kanseller Reservasjon"}
+    onClick={() => onCancelReservation(reservation?.id)}
+    disabled={isDeleted || isLoading || deleteReservation.isPending || isCancelling}
+    loading={isLoading}
+    loadingLabel="Kansellerer..."
+  />
+</div>
+
       </div>
     </div>
   );
+
 };
 
 export default ReservationCard;

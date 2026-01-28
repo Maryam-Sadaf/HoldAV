@@ -34,7 +34,7 @@ interface RoomClientProps {
 }
 const Reservation = ({
   currentUser,
-  roomByName,
+  roomByName: initialRoomByName,
   reservationsByRomName = [],
   authorizedUsers = [],
 }: RoomClientProps) => {
@@ -47,6 +47,7 @@ const Reservation = ({
   const [reservationsState, setReservationsState] = useState<any[]>(
     Array.isArray(reservationsByRomName) ? reservationsByRomName : []
   );
+  const [roomByName, setRoomByName] = useState(initialRoomByName); // Make room data reactive
   const selectedDatesRef = useRef({ start_date: "", end_date: "" });
   // Track initial mount to prevent overwriting optimistic updates
   const isInitialMountRef = useRef(true);
@@ -71,6 +72,15 @@ const Reservation = ({
   
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  
+  // Update room data when route changes
+  useEffect(() => {
+    if (initialRoomByName && initialRoomByName.id !== roomByName?.id) {
+      console.log('Room changed:', { from: roomByName?.id, to: initialRoomByName.id, name: initialRoomByName.name });
+      setRoomByName(initialRoomByName);
+    }
+  }, [initialRoomByName, roomByName?.id]);
+  
   useEffect(() => {
     // Wait until we have an authorizedUsers value before deciding
     if (typeof authorizedUsers === "undefined") return;
@@ -212,8 +222,10 @@ const Reservation = ({
   };
 
   const onCreateReservation = useCallback(async (payload?: { start_date: Date; end_date: Date; text: string }) => {
+    console.log('🔄 onCreateReservation called', { payload, selectedDates: selectedDatesRef.current });
     const { start_date, end_date } = selectedDatesRef.current;
     if (!start_date || !end_date) {
+      console.log('❌ No start/end date, returning early');
       return;
     }
     const calculateDuration = (startDateTime: string | Date, endDateTime: string | Date) => {
@@ -248,32 +260,33 @@ const Reservation = ({
       duration: calculateDuration(payload?.start_date ?? start_date, payload?.end_date ?? end_date).toString(),
     };
 
+    console.log('Creating reservation with data:', {
+      roomId: ensuredRoomId,
+      roomName: ensuredRoomName,
+      start_date: requestData.start_date,
+      end_date: requestData.end_date,
+      companyName: companyName
+    });
+
     try {
+      console.log('🚀 Starting reservation creation...');
       setIsLoading(true);
       const response = await axios.post("/api/reservation", requestData);
+      console.log('✅ Reservation created successfully', response.data);
       // Return the created reservation id so Scheduler can swap temp id
       const createdId = response?.data?.reservations?.[0]?.id || response?.data?.id;
       setIsReservation(false);
       
-      // Update reservations state with the newly created reservation
-      if (createdId) {
-        const createdReservation = response?.data?.reservations?.[0];
-        if (createdReservation) {
-          setReservationsState((prev) => [...prev, createdReservation]);
-        } else {
-          setReservationsState((prev) => [
-            ...prev,
-            {
-              id: createdId,
-              roomId: ensuredRoomId,
-              roomName: ensuredRoomName,
-              start_date: requestData.start_date,
-              end_date: requestData.end_date,
-              text: requestData.text,
-            },
-          ]);
-        }
-      }
+      // Immediately update local state with new reservation
+      const newReservation = {
+        id: createdId,
+        roomId: ensuredRoomId,
+        roomName: ensuredRoomName,
+        start_date: requestData.start_date,
+        end_date: requestData.end_date,
+        text: requestData.text,
+      };
+      setReservationsState((prev) => [...prev, newReservation]);
       
       return { id: createdId };
       // Toast is now handled by Scheduler component
@@ -287,11 +300,9 @@ const Reservation = ({
   }, [
     selectedDates,
     formData,
-    roomByName,
+    roomByName?.id, // Only depend on roomByName.id, not the entire object
     companyName,
-    roomNameParam,
     setIsReservation,
-    //creatorByCompanyName?.userId,
   ]);
 
   const onUpdateReservation = async (id: string, updatedData: any) => {

@@ -28,13 +28,16 @@ async function checkReservationConflict(
       return true; // Invalid time range
     }
 
-    // Firestore limitation: range filters on multiple fields are not allowed.
-    // Query by one range (start_date) and filter end_date in-memory.
+    console.log(`Checking conflicts for roomId: ${roomId}, time: ${newStart.toISOString()} - ${newEnd.toISOString()}`);
+
+    // Get fresh data directly from Firestore
     const conflictingQs = await db.collection('reservations')
       .where('roomId', '==', roomId)
       .where('start_date', '<', newEnd)
-      .limit(100) // Increased limit to catch more conflicts
+      .limit(100)
       .get();
+
+    console.log(`Found ${conflictingQs.docs.length} potential conflicts for roomId: ${roomId}`);
 
     // Check for conflicts in memory
     const hasConflict = conflictingQs.docs.some((doc) => {
@@ -52,13 +55,16 @@ async function checkReservationConflict(
       }
       
       // Check for overlap: two time ranges overlap if one starts before the other ends
-      // This covers both exact matches and partial overlaps
-      // Overlap occurs when: existingStart < newEnd && existingEnd > newStart
       const overlaps = existingStart < newEnd && existingEnd > newStart;
+      
+      if (overlaps) {
+        console.log(`Conflict found: existing ${existingStart.toISOString()} - ${existingEnd.toISOString()} overlaps with new ${newStart.toISOString()} - ${newEnd.toISOString()}`);
+      }
       
       return overlaps;
     });
 
+    console.log(`Conflict result for roomId ${roomId}: ${hasConflict}`);
     return hasConflict;
   } catch (error) {
     console.error('Error checking reservation conflict:', error);
@@ -140,14 +146,17 @@ export async function POST(request: Request) {
     await docRef.set(reservationData);
     const reservation = { id: docRef.id, ...reservationData } as any;
 
-    // PERFORMANCE: Invalidate relevant caches after creating reservation
+    // PERFORMANCE: Invalidate only specific relevant caches after creating reservation
     const userCacheKey = generateCacheKey(CACHE_KEYS.USER_RESERVATIONS, currentUser.id);
     const companyCacheKey = generateCacheKey(CACHE_KEYS.COMPANY_RESERVATIONS, companyName);
     const roomCacheKey = generateCacheKey(CACHE_KEYS.ROOM_RESERVATIONS, roomName);
+    const roomIdCacheKey = generateCacheKey(CACHE_KEYS.ROOM_RESERVATIONS, roomId);
     
+    // Clear only specific relevant caches to avoid unnecessary page reloads
     cache.delete(userCacheKey);
     cache.delete(companyCacheKey);
     cache.delete(roomCacheKey);
+    cache.delete(roomIdCacheKey);
 
     // Return minimal response for faster processing
     return NextResponse.json({ 

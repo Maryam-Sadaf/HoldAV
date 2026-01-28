@@ -1,5 +1,7 @@
 "use client";
 import { signOut, useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface BarProps {
   currentUser: any | null;
@@ -7,12 +9,18 @@ interface BarProps {
   rooms: any | null;
 }
 const Bar = ({ currentUser, routes, rooms }: BarProps) => {
+  const router = useRouter();
   // Use client-side session for real-time updates
   const { data: session, status } = useSession();
   const clientUser = session?.user || currentUser;
   
   const logout = async () => {
-    await signOut({ callbackUrl: "/" });
+    await signOut({ 
+      callbackUrl: "/",
+      redirect: false // Don't redirect automatically
+    });
+    // Force page refresh after logout to clear all state
+    window.location.href = "/";
   };
   return (
     <div className="flex items-center justify-end pr-4 bg-white">

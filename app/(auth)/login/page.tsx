@@ -76,7 +76,10 @@ const Authentification = () => {
             toast.success("Logget inn");
             hasToastedRef.current = true;
           }
-          router.push("/");
+          // Force page refresh after successful login to update session state
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1000); // 1 second delay
         }
 
         if (callback?.error) {
@@ -90,7 +93,15 @@ const Authentification = () => {
   };
 
   const handleGoogleLogin = async () => {
-    await signIn("google", { callbackUrl: "/" });
+    const result = await signIn("google", { 
+      callbackUrl: "/",
+      redirect: false 
+    });
+    if (result?.ok) {
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+    }
   };
   return (
     <div className="relative w-full mx-auto bg-gradient-to-b from-[#F5F5F5] to-[#fff] min-h-[100vh] ">

@@ -6,7 +6,7 @@ import { Link, animateScroll as scroll } from "react-scroll";
 import { FaFacebookSquare, FaInstagram } from "react-icons/fa";
 import { usePathname, useRouter } from "next/navigation";
 
-const NavbarDrawer = ({ handleNav }: { handleNav: () => void }) => {
+const NavbarDrawer = ({ handleNav, currentUser }: { handleNav: () => void; currentUser?: any | null }) => {
   const router = useRouter();
   const currentRoute = usePathname();
   const isFrontPage = currentRoute === "/";
@@ -124,22 +124,26 @@ const NavbarDrawer = ({ handleNav }: { handleNav: () => void }) => {
             </li>
           </ul>
 
-          <div className="flex flex-col justify-end w-full py-8">
-            <NextLink
-              className="inline-block px-5 py-3 font-semibold tracking-tight text-center transition duration-200 border-2 rounded-lg border-primary text-primary hover:bg-primary hover:text-white focus:ring-4 focus:ring-dark"
-              href="/login"
-            >
-              Logg inn
-            </NextLink>
-          </div>
-          <div className="flex flex-col justify-end w-full pb-8">
-            <NextLink
-              className="inline-block px-5 py-3 font-semibold tracking-tight text-center text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-dark"
-              href="/signup"
-            >
-              Kom i gang
-            </NextLink>
-          </div>
+          {!currentUser && (
+            <div className="flex flex-col justify-end w-full py-8">
+              <NextLink
+                className="inline-block px-5 py-3 font-semibold tracking-tight text-center transition duration-200 border-2 rounded-lg border-primary text-primary hover:bg-primary hover:text-white focus:ring-4 focus:ring-dark"
+                href="/login"
+              >
+                Logg inn
+              </NextLink>
+            </div>
+          )}
+          {!currentUser && (
+            <div className="flex flex-col justify-end w-full pb-8">
+              <NextLink
+                className="inline-block px-5 py-3 font-semibold tracking-tight text-center text-white transition duration-200 rounded-lg bg-primary hover:bg-secondary focus:ring-4 focus:ring-dark"
+                href="/signup"
+              >
+                Kom i gang
+              </NextLink>
+            </div>
+          )}
         </div>
         <div className="mt-auto">
           <p className="my-4 text-xs text-center text-gray-400">

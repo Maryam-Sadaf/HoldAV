@@ -14,8 +14,9 @@ import { getCreatorByCompanyName } from "@/app/server/actions/getCreatorOfTheCom
 import RoomPageSkeleton from "@/components/loading/RoomPageSkeleton";
 import { formatRoomNameForDisplay } from "@/utils/slugUtils";
 
-// Force dynamic rendering to prevent caching issues when navigating between rooms
+// Enable dynamic rendering for real-time reservation updates
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable ISR caching for real-time data
 
 interface IParams {
   roomId?: string;
