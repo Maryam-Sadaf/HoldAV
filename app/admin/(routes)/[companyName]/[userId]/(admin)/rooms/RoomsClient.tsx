@@ -36,7 +36,7 @@ const RoomsClient = ({
   const { data: authorizedUsers } = useQuery({
     queryKey: ["authorizedUsers", companyName],
     queryFn: async () => {
-      const res = await axios.get(`/api/authorized-users/${companyName}`);
+      const res = await axios.get(`/api/authorized-users/${companyName}?userId=${currentUser?.id}`);
       return res.data;
     },
     initialData: authorizedUsersInit,
@@ -67,17 +67,41 @@ const RoomsClient = ({
 
   useEffect(() => {
     if (typeof authorizedUsers === 'undefined') return;
+    
+    console.log('Authorization check:', {
+      currentUser: currentUser,
+      authorizedUsers: authorizedUsers,
+      companyName: companyName
+    });
+    
     const isCurrentUserAdmin = currentUser?.role === "admin";
     const isCurrentUserAuthorized = authorizedUsers?.find(
-      (user: any) => user.userId === currentUser?.id || user.id === currentUser?.id || user.email === currentUser?.email
+      (user: any) => {
+        const match = user.userId === currentUser?.id || 
+                     user.id === currentUser?.id || 
+                     user.email === currentUser?.email;
+        console.log('Checking user:', user, 'Match:', match);
+        return match;
+      }
     );
-    if (isCurrentUserAuthorized || isCurrentUserAdmin) {
+    
+    // Additional fallback: if no authorized users found but user is admin, allow access
+    const fallbackAuth = isCurrentUserAdmin && (!authorizedUsers || authorizedUsers.length === 0);
+    
+    console.log('Authorization result:', {
+      isCurrentUserAdmin,
+      isCurrentUserAuthorized,
+      fallbackAuth,
+      finalAuthorized: isCurrentUserAuthorized || isCurrentUserAdmin || fallbackAuth
+    });
+    
+    if (isCurrentUserAuthorized || isCurrentUserAdmin || fallbackAuth) {
       setIsAuthorized(true);
     } else {
       setIsAuthorized(false);
     }
     setAuthChecked(true);
-  }, [authorizedUsers, currentUser]);
+  }, [authorizedUsers, currentUser, companyName]);
 
   if (!authChecked) {
     return <ContentLoader message=" møterom…" />;
