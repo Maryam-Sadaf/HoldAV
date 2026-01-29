@@ -69,7 +69,7 @@ const RoomsClient = ({
     if (typeof authorizedUsers === 'undefined') return;
     const isCurrentUserAdmin = currentUser?.role === "admin";
     const isCurrentUserAuthorized = authorizedUsers?.find(
-      (user: any) => user.userId === currentUser?.id
+      (user: any) => user.userId === currentUser?.id || user.id === currentUser?.id || user.email === currentUser?.email
     );
     if (isCurrentUserAuthorized || isCurrentUserAdmin) {
       setIsAuthorized(true);
