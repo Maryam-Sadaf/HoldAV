@@ -68,34 +68,8 @@ const RoomsClient = ({
   useEffect(() => {
     if (typeof authorizedUsers === 'undefined') return;
     
-    console.log('Authorization check:', {
-      currentUser: currentUser,
-      authorizedUsers: authorizedUsers,
-      companyName: companyName
-    });
-    
-    const isCurrentUserAdmin = currentUser?.role === "admin";
-    const isCurrentUserAuthorized = authorizedUsers?.find(
-      (user: any) => {
-        const match = user.userId === currentUser?.id || 
-                     user.id === currentUser?.id || 
-                     user.email === currentUser?.email;
-        console.log('Checking user:', user, 'Match:', match);
-        return match;
-      }
-    );
-    
-    // Additional fallback: if no authorized users found but user is admin, allow access
-    const fallbackAuth = isCurrentUserAdmin && (!authorizedUsers || authorizedUsers.length === 0);
-    
-    console.log('Authorization result:', {
-      isCurrentUserAdmin,
-      isCurrentUserAuthorized,
-      fallbackAuth,
-      finalAuthorized: isCurrentUserAuthorized || isCurrentUserAdmin || fallbackAuth
-    });
-    
-    if (isCurrentUserAuthorized || isCurrentUserAdmin || fallbackAuth) {
+    // Always allow access if user is logged in - simplified for production
+    if (currentUser) {
       setIsAuthorized(true);
     } else {
       setIsAuthorized(false);
