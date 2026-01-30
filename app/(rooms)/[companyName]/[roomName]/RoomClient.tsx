@@ -38,6 +38,11 @@ const Reservation = ({
   reservationsByRomName = [],
   authorizedUsers = [],
 }: RoomClientProps) => {
+  console.log('🏗️ RoomClient MOUNTED', {
+    roomNameProp: initialRoomByName?.name,
+    roomIdProp: initialRoomByName?.id,
+    reservationsCount: reservationsByRomName?.length
+  });
   const router = useRouter();
   const [selectedDates, setSelectedDates] = useState({
     start_date: "",
@@ -47,7 +52,13 @@ const Reservation = ({
   const [reservationsState, setReservationsState] = useState<any[]>(
     Array.isArray(reservationsByRomName) ? reservationsByRomName : []
   );
-  const [roomByName, setRoomByName] = useState(initialRoomByName); // Make room data reactive
+  // Removed local state synchronization. Relying directly on props.
+  // const [roomByName, setRoomByName] = useState(initialRoomByName); 
+  const roomByNameRef = useRef(initialRoomByName); // Ref for immediate access in callbacks
+  // Immediately update ref on every render to match props. 
+  // This corresponds to a "derived state" pattern where we just want the latest prop in a Ref.
+  roomByNameRef.current = initialRoomByName;
+
   const selectedDatesRef = useRef({ start_date: "", end_date: "" });
   // Track initial mount to prevent overwriting optimistic updates
   const isInitialMountRef = useRef(true);
@@ -69,18 +80,16 @@ const Reservation = ({
   const routeParams = useParams<{ companyName: string; roomName: string }>();
   const companyName = routeParams ? routeParams.companyName : null;
   const roomNameParam = routeParams ? routeParams.roomName : null;
-  
+
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  
-  // Update room data when route changes
-  useEffect(() => {
-    if (initialRoomByName && initialRoomByName.id !== roomByName?.id) {
-      console.log('Room changed:', { from: roomByName?.id, to: initialRoomByName.id, name: initialRoomByName.name });
-      setRoomByName(initialRoomByName);
-    }
-  }, [initialRoomByName, roomByName?.id]);
-  
+
+  /* 
+   * REMOVED: Effect hooks that were causing stale state issues.
+   * By removing the intermediate useState and useEffect, we ensure that
+   * roomByNameRef.current ALWAYS has the fresh prop value assigned during render.
+   */
+
   useEffect(() => {
     // Wait until we have an authorizedUsers value before deciding
     if (typeof authorizedUsers === "undefined") return;
@@ -98,14 +107,14 @@ const Reservation = ({
 
   useEffect(() => {
     const newReservations = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
-    
+
     // On initial mount, set the state
     if (isInitialMountRef.current) {
       setReservationsState(newReservations);
       isInitialMountRef.current = false;
       return;
     }
-    
+
     // After initial mount, only merge new reservations from server
     // This prevents overwriting optimistic updates during reservation creation
     setReservationsState((prev) => {
@@ -120,10 +129,10 @@ const Reservation = ({
 
   // Use ref to track previous dates to prevent unnecessary recalculations
   const previousDatesRef = useRef<string>('');
-  
+
   useEffect(() => {
     const source = Array.isArray(reservationsState) ? reservationsState : [];
-    
+
     if (source.length === 0) {
       // Only update if dates is not already empty
       if (dates.length > 0) {
@@ -132,8 +141,8 @@ const Reservation = ({
       return;
     }
 
-    const currentRoomId = roomByName?.id ? String(roomByName.id).trim() : null;
-    const currentRoomNameLc = (roomByName?.name || "").toString().trim().toLowerCase();
+    const currentRoomId = initialRoomByName?.id ? String(initialRoomByName.id).trim() : null;
+    const currentRoomNameLc = (initialRoomByName?.name || "").toString().trim().toLowerCase();
     const routeRoomNameLc = (roomNameParam || "").toString().trim().toLowerCase();
 
     if (!currentRoomId && !currentRoomNameLc && !routeRoomNameLc) {
@@ -157,32 +166,32 @@ const Reservation = ({
       const rid = r?.roomId ? String(r.roomId).trim() : null;
       const rname = (r?.roomName || "").toString().trim();
       const rnameLc = rname.toLowerCase();
-      
+
       // Match by roomId first (most reliable)
       if (currentRoomId && rid && rid === currentRoomId) {
         return true;
       }
-      
+
       // Match by room name (exact lowercase match)
       if (currentRoomNameLc && rnameLc && rnameLc === currentRoomNameLc) {
         return true;
       }
-      
+
       // Match by route room name (normalized comparison)
       if (routeRoomNameLc && rnameLc) {
         // Normalize both: remove hyphens, normalize spaces, lowercase
         const normalize = (str: string) => str.replace(/-/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
         const normalizedRoute = normalize(routeRoomNameLc);
         const normalizedReservation = normalize(rname);
-        
+
         if (normalizedReservation === normalizedRoute) {
           return true;
         }
       }
-      
+
       return false;
     });
-    
+
     // Convert to dates format
     const datesArray = filtered.map((r: any) => ({
       id: r.id,
@@ -190,14 +199,14 @@ const Reservation = ({
       end_date: new Date(r.end_date),
       text: r.text || "",
     }));
-    
+
     // Only update if content actually changed (prevent unnecessary Scheduler re-renders)
     const datesKey = datesArray.map(d => `${d.id}-${d.start_date.getTime()}-${d.end_date.getTime()}-${d.text}`).join('|');
     if (previousDatesRef.current !== datesKey) {
       previousDatesRef.current = datesKey;
       setDates(datesArray);
     }
-  }, [reservationsState, roomByName?.id, roomByName?.name, roomNameParam]);
+  }, [reservationsState, initialRoomByName?.id, initialRoomByName?.name, roomNameParam]);
   const addMessage = (message: any) => {
     const maxLogLength = 5;
     const newMessage = { message };
@@ -222,9 +231,17 @@ const Reservation = ({
   };
 
   const onCreateReservation = useCallback(async (payload?: { start_date: Date; end_date: Date; text: string }) => {
-    console.log('🔄 onCreateReservation called', { payload, selectedDates: selectedDatesRef.current });
-    const { start_date, end_date } = selectedDatesRef.current;
-    if (!start_date || !end_date) {
+    console.log('🔄 onCreateReservation called', {
+      payload,
+      selectedDates: selectedDatesRef.current,
+      currentRefRoomId: roomByNameRef.current?.id,
+      currentRefRoomName: roomByNameRef.current?.name,
+      // Removed stateRoomId logging as state is removed
+    });
+    const effectiveStart = payload?.start_date || selectedDatesRef.current.start_date;
+    const effectiveEnd = payload?.end_date || selectedDatesRef.current.end_date;
+
+    if (!effectiveStart || !effectiveEnd) {
       console.log('❌ No start/end date, returning early');
       return;
     }
@@ -244,20 +261,20 @@ const Reservation = ({
     const createdByText = payload?.text ?? formData.text;
 
     // Ensure room identifiers are present in the payload
-    const ensuredRoomId = roomByName?.id;
-    const ensuredRoomName = roomByName?.name; // Use actual room name from database, not URL param
+    const ensuredRoomId = roomByNameRef.current?.id;
+    const ensuredRoomName = roomByNameRef.current?.name; // Use actual room name from database, not URL param
     if (!ensuredRoomId || !ensuredRoomName) {
       throw new Error("Room information not available yet. Please try again.");
     }
 
     const requestData = {
-      start_date: payload?.start_date ?? start_date,
-      end_date: payload?.end_date ?? end_date,
+      start_date: effectiveStart,
+      end_date: effectiveEnd,
       text: createdByText,
       roomId: ensuredRoomId,
       roomName: ensuredRoomName,
       companyName: companyName,
-      duration: calculateDuration(payload?.start_date ?? start_date, payload?.end_date ?? end_date).toString(),
+      duration: calculateDuration(effectiveStart, effectiveEnd).toString(),
     };
 
     console.log('Creating reservation with data:', {
@@ -276,7 +293,7 @@ const Reservation = ({
       // Return the created reservation id so Scheduler can swap temp id
       const createdId = response?.data?.reservations?.[0]?.id || response?.data?.id;
       setIsReservation(false);
-      
+
       // Immediately update local state with new reservation
       const newReservation = {
         id: createdId,
@@ -287,7 +304,7 @@ const Reservation = ({
         text: requestData.text,
       };
       setReservationsState((prev) => [...prev, newReservation]);
-      
+
       return { id: createdId };
       // Toast is now handled by Scheduler component
     } catch (error) {
@@ -300,7 +317,7 @@ const Reservation = ({
   }, [
     selectedDates,
     formData,
-    roomByName?.id, // Only depend on roomByName.id, not the entire object
+    initialRoomByName?.id, // Depend on prop directly
     companyName,
     setIsReservation,
   ]);
@@ -321,11 +338,11 @@ const Reservation = ({
         prev.map((reservation: any) =>
           String(reservation.id) === String(id)
             ? {
-                ...reservation,
-                start_date: formattedStartDate,
-                end_date: formattedEndDate,
-                text: updatedData.text ?? reservation.text,
-              }
+              ...reservation,
+              start_date: formattedStartDate,
+              end_date: formattedEndDate,
+              text: updatedData.text ?? reservation.text,
+            }
             : reservation
         )
       );
@@ -344,12 +361,12 @@ const Reservation = ({
     }
     try {
       await axios.delete(`/api/reservation/${id}`);
-      
+
       // Update reservations state by removing the deleted reservation
       setReservationsState((prev) =>
         prev.filter((reservation: any) => String(reservation.id) !== String(id))
       );
-      
+
       // Toast is now handled by Scheduler component
     } catch (error: any) {
       // Re-throw error so Scheduler component can handle it

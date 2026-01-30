@@ -25,7 +25,8 @@ interface IParams {
 }
 const Rooms = async ({ params }: { params: Promise<IParams> }) => {
   const { roomName, companyName } = await params;
-  
+  console.log('🌍 SERVER PAGE: Received params', { roomName, companyName });
+
   // Parallel data fetching for better performance
   const [
     currentUser,
@@ -40,10 +41,15 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
     getReservationsByRoomName({ roomName: roomName }),
     getCreatorByCompanyName({ companyName: companyName })
   ]);
-  
+  console.log('🌍 SERVER PAGE: Fetched data', {
+    roomNameParam: roomName,
+    fetchedRoomId: roomByName?.id,
+    fetchedRoomName: roomByName?.name
+  });
+
   // Note: roomId query requires Firestore index - skipping for now
   // roomName query is working and returning reservations
-  
+
   // Use reservations from roomName query (already working)
   const uniqueReservations = Array.isArray(reservationsByRomName) ? reservationsByRomName : [];
 
@@ -68,6 +74,7 @@ const Rooms = async ({ params }: { params: Promise<IParams> }) => {
       <Suspense fallback={<RoomPageSkeleton />}>
         <div className="relative w-full ">
           <RoomClient
+            key={`room-${roomByName?.id || roomName}-${companyName}-${Math.random()}`}
             currentUser={currentUser}
             roomByName={roomByName}
             reservationsByRomName={uniqueReservations}
